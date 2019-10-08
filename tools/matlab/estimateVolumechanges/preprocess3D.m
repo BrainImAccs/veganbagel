@@ -1,15 +1,43 @@
-function jc_preprocess3D(inputdir, filename)
+function preprocess3D(inputNii)
 
-load(fullfile(pwd,'jc_cat12.mat'));
-matlabbatch{1}.spm.tools.cat.estwrite.data = {};
-matlabbatch{1}.spm.tools.cat.estwrite.data{1,1} = fullfile(inputdir,[filename '.nii']);
-spm_jobman('run',matlabbatch)
+  % Dissect path/filename.ext
+  [niiPath, niiName, niiExt] = fileparts(inputNii);
 
-load(fullfile(pwd,'jc_smooth.mat'));
-matlabbatch{1}.spm.spatial.smooth.data = {};
-matlabbatch{1}.spm.spatial.smooth.data{1,1} = fullfile(inputdir,'mri',['mwp1' filename '.nii']);
-%matlabbatch{1}.spm.spatial.smooth.data{2,1} = fullfile(inputdir,'mri',['mwp2' filename '.nii']);
-spm_jobman('run',matlabbatch)
+  % Initialize SPM12
+  spm defaults fmri;
+  spm_jobman initcfg;
+  spm_get_defaults('cmdline', true);
 
-%delete(fullfile(inputdir,[filename '_seg8.mat']));
-%delete(fullfile(inputdir,['p' filename '_seg8.txt']));
+  %%%
+  %%% Preprocessing
+  %%%
+
+  % Load the defaults
+  load(fullfile(pwd,'batches/cat12.mat'));
+
+  % Adjust the location of some files according to the SPM12 install path (expects a default install)
+  matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = cellstr(strcat(fullfile(spm('Dir'), "/tpm/TPM.nii"), ',1'));
+  matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.darteltpm = cellstr(strcat(fullfile(spm('Dir'), "/toolbox/cat12/templates_1.50mm/Template_1_IXI555_MNI152.nii"), ',1'));
+  matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.shootingtpm = cellstr(strcat(fullfile(spm('Dir'), "/toolbox/cat12/templates_1.50mm/Template_0_IXI555_MNI152_GS.nii"), ',1'));
+
+  % Insert path to the NIfTI to be processed
+  matlabbatch{1}.spm.tools.cat.estwrite.data = {};
+  matlabbatch{1}.spm.tools.cat.estwrite.data = cellstr(fullfile(inputNii));
+
+  % Start preprocessing
+  spm_jobman('run', matlabbatch);
+
+  %%%
+  %%% Smoothing
+  %%%
+
+  % Load the defaults
+  load(fullfile(pwd,'batches/smooth.mat'));
+
+  % Define the output directory
+  matlabbatch{1}.spm.spatial.smooth.data = {};
+  matlabbatch{1}.spm.spatial.smooth.data = cellstr(fullfile(niiPath, 'mri', ['mwp1' niiName niiExt]));
+
+  % Start smoothing
+  spm_jobman('run', matlabbatch)
+end

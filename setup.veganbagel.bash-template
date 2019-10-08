@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+#
+# Setup options for veganbagel
+#
+
+###
+### You will need to have https://github.com/BrainImAccs/BrainSTEM
+### This is essentially a module of BrainSTEM
+###
+### You might want to refer to the documentation at https://github.com/BrainImAccs/veganbagel
+###
+
+# Source some global setup options
+#
+. "${__dir}/../../setup.brainstem.bash"
+
+# Add this number to the original series's number (derived from DICOM tag 0020,0011)
+#
+base_series_no=31200
+
+# Path to the templates relative to setup.veganbagel.bash
+#
+template_volumes="${__dir}/templates/rockland/"
+
+# Colour lookup tables (LUTs) for colouring volume changes
+#
+# These LUTs are part of the Colorcet: Collection of perceptually uniform colormaps
+# and can be found at https://github.com/pyviz/colorcet
+#
+colours_negative_lut="${__dir}/templates/lut/linear_blue_5-95_c73_n256.csv"
+colours_positive_lut="${__dir}/templates/lut/linear_kryw_0-100_c71_n256.csv"
+
+# Maximum standard deviations to consider in the LUT (everything above will just stay at the same colour)
+#
+z_max=10
+
+# Minimum standard deviations to consider in the LUT (everything below will be transparent)
+#
+z_min=2.5
+
+# Size of the legend
+# TODO: Hacky, revise
+#
+legend_height_shrink_factor=250
+legend_width_max=30
+
+# Path to SPM12 install (will be included in $MATLABPATH before executing matlab)
+#
+spm12=/path/to/spm12
+
+# Path to MATLAB binary
+#
+# At this moment MATLAB is a requirement.
+# GNU Octave is just not quite there, yet: https://en.wikibooks.org/wiki/SPM/Octave
+#
+matlab=$(which matlab)
+
+# Path to med2image binary
+#
+med2image=$(which med2image)
+
+# Path to ImageMagick binaries
+#
+convert=$(which convert)
+identify=$(which identify)
+composite=$(which composite)
