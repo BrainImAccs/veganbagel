@@ -1,0 +1,2 @@
+templates/**/*.gz filter=lfs diff=lfs merge=lfs -text
+templates/**/*.nii filter=lfs diff=lfs merge=lfs -text
