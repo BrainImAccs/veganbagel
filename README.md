@@ -15,6 +15,7 @@ Sex- and age-dependent gray-matter (GM) templates based on T1w MRIs of 693 healt
 These templates can then be used to generate atrophy maps for out-of-sample subjects. Preprocessing is done with the same preprocessing pipeline. Voxel-wise Z-value maps are generated, transformed back into the subject space, colour-coded and merged with the original structural MR brain scan. These volume maps will be automatically exported back to the PACS.
 
 ![The veganbagel workflow and resulting fused atrophy maps of a 68 year old male from the Alzheimer‘s Disease Neuroimaging Initiative](img/veganbagel_workflow.jpg "The veganbagel workflow and resulting fused atrophy maps of a 68 year old male from the Alzheimer‘s Disease Neuroimaging Initiative")
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FBrainImAccs%2Fveganbagel.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FBrainImAccs%2Fveganbagel?ref=badge_shield)
 
 Options to `veganbagel.bash`:
 
@@ -76,3 +77,7 @@ Please see https://github.com/BrainImAccs/BrainSTEM#debugging
 # Acknowledgements
 
 The main scripts are based on the [BASH3 Boilerplate](http://bash3boilerplate.sh).
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FBrainImAccs%2Fveganbagel.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2FBrainImAccs%2Fveganbagel?ref=badge_large)
