@@ -155,8 +155,8 @@ source "${__dir}/../../tools/bash/sendDCM.bash"
 
 # shellcheck source=bash/tools/estimateVolumechanges.bash
 source "${__dir}/tools/bash/estimateVolumechanges.bash"
-# shellcheck source=bash/tools/convertNII2TIFF_matlab.bash
-source "${__dir}/tools/bash/convertNII2TIFF_matlab.bash"
+# shellcheck source=bash/tools/convertNII2TIFF_python.bash
+source "${__dir}/tools/bash/convertNII2TIFF_python.bash"
 # shellcheck source=bash/tools/colourLUT.bash
 source "${__dir}/tools/bash/colourLUT.bash"
 
@@ -244,7 +244,7 @@ estimateVolumechanges "${nii}" "${template_volumes}" "${age}" "${sex}" || error 
 
 ### Step 4: Convert resulting zmap to TIFF (grayscale)
 mkdir "${workdir}/tiff-in-zmap"
-convertNII2TIFF_matlab "${zmap}" "${workdir}/tiff-in-zmap"
+convertNII2TIFF_python "${zmap}" "${workdir}/tiff-in-zmap"
 
 ### Step 5: Generate and apply colour lookup tables to the zmap, then merge with the original scan
 mkdir "${workdir}/out"
