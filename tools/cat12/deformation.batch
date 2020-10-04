@@ -1,10 +1,12 @@
-% The z-map to transform into subject space, that will be dynamically replaced by cat_standalone.sh
+%-----------------------------------------------------------------------
+% Job saved on 04-Oct-2020 15:27:49 by cfg_util (rev $Rev: 7345 $)
+% spm SPM - SPM12 (7771)
+% cfg_basicio BasicIO - Unknown
+%-----------------------------------------------------------------------
 matlabbatch{1}.spm.util.defs.out{1}.pull.fnames = '<UNDEFINED>';
-
-% path to inverse transformation field, that will be dynamically replaced by cat_standalone.sh
-matlabbatch{1}.spm.util.defs.comp{1}.def = '<UNDEFINED>';
-
+matlabbatch{1}.spm.util.defs.comp{1}.def = {'<UNDEFINED>'};
 matlabbatch{1}.spm.util.defs.out{1}.pull.savedir.savesrc = 1;
 matlabbatch{1}.spm.util.defs.out{1}.pull.interp = 4;
 matlabbatch{1}.spm.util.defs.out{1}.pull.mask = 0;
-matlabbatch{1}.spm.util.defs.out{1}.pull.fwhm = [0 0 0];;
+matlabbatch{1}.spm.util.defs.out{1}.pull.fwhm = [0 0 0];
+matlabbatch{1}.spm.util.defs.out{1}.pull.prefix = '';
