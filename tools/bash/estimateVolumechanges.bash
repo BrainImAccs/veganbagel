@@ -15,23 +15,31 @@ function estimateVolumechanges {
 
   info "estimageVolumechanges start"
 
+  # Split the full path to the NIfTI file in filename and dirname
+  local name_nii=$(basename "${input_nii}")
+  local dir_processed=$(dirname "${input_nii}")/mri/
+
   # Start CAT12 segmentation
+  info "  Segmentation start"
   ${SPMROOT}/standalone/cat_standalone.sh \
     -b "${__dir}/tools/cat12/segment.batch" \
     "${input_nii}" || error "CAT12 segmentation failed"
 
   # Path to the result of CAT12 standalone segmentation
-  local processed_nii=$(dirname "${input_nii}")/mri/mwp1$(basename "${input_nii}")
+  local processed_nii="${dir_processed}/mwp1${name_nii}"
   if [[ ! -f "${processed_nii}" ]]; then error "Could not find ${processed_nii}."; fi
+  info "  Segmentation done"
 
-  # Start CAT12 smoothing
+  # Start smoothing
+  info "  Smoothing start"
   ${SPMROOT}/standalone/cat_standalone.sh \
     -b "${__dir}/tools/cat12/smooth.batch" \
     "${processed_nii}" || error "CAT12 smoothing failed"
 
   # Path to the result of CAT12 standalone smoothing
-  local processed_smoothed_nii=$(dirname "${input_nii}")/mri/smwp1$(basename "${input_nii}")
+  local processed_smoothed_nii="${dir_processed}/smwp1${name_nii}"
   if [[ ! -f "${processed_smoothed_nii}" ]]; then error "Could not find ${processed_smoothed_nii}."; fi
+  info "  Smoothing done"
 
   # Estimate the volume
   #
@@ -39,6 +47,7 @@ function estimateVolumechanges {
   # 2. Voxel-wise divide the data from 1. by the standard deviation template, which yields the voxel-wise z-map
   # 3. Voxel-wise multiply the data from 3. by the gray matter mask (essentially to mask anything non-grey-matter, which is multiplied by 0)
   #  
+  info "  zmap generation start"
   local mean_template="${templates}/${age}${sex}smwp1_mean.nii.gz"
   local std_template="${templates}/${age}${sex}smwp1_std.nii.gz"
 
@@ -52,16 +61,20 @@ function estimateVolumechanges {
     -div ${std_template} \
     -mul ${gm_mask} \
     ${zmap_normalized}
+  if [[ ! -f "${zmap_normalized}" ]]; then error "Could not find ${zmap_normalized}."; fi
+  info "  zmap generation done"
 
   # Transform back to subject space
-  local inverse_transformation_field=$(dirname "${input_nii}")/mri/iy_$(basename "${input_nii}")
+  info "  Inverse transformation start"
   ${SPMROOT}/standalone/cat_standalone.sh \
     -b "${__dir}/tools/cat12/deformation.batch" \
-    -a1 "${inverse_transformation_field}" \
+    -a1 "{'${dir_processed}/iy_${name_nii}'}" \
     "${zmap_normalized}" || error "Transformation to subject space failed"
 
   # Export the variable zmap, which contains the path and filename to the generated zmap for the subject
-  export zmap=$(echo $(dirname "${input_nii}")/w$(basename "${input_nii}" | sed -e 's/\.nii$/_zmap.nii/I'))
+  export zmap="${dir_processed}/wsmwp1$(echo ${name_nii} | sed -e 's/\.nii$/_zmap.nii/I')"
+  if [[ ! -f "${zmap}" ]]; then error "Could not find ${zmap}."; fi
+  info "  Inverse transformation done"
   
   info "estimateVolumechanges done"
 }
