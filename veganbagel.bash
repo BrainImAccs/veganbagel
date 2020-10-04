@@ -218,15 +218,15 @@ echo $age > "${workdir}/age"
 echo $sex > "${workdir}/sex"
 
 # Check if the appropriate mean and standard deviation (std) templates are available
-if [[ ! -f "${template_volumes}/${age}${sex}smwp1_mean.nii" ]]; then
+if [[ ! -f "${template_volumes}/${age}${sex}smwp1_mean.nii.gz" ]]; then
   error "There is no mean template available for ${age}/${sex} in ${template_volumes}."
 fi
-if [[ ! -f "${template_volumes}/${age}${sex}smwp1_std.nii" ]]; then
+if [[ ! -f "${template_volumes}/${age}${sex}smwp1_std.nii.gz" ]]; then
   error "There is no standard deviation template available for ${age}/${sex} in ${template_volumes}."
 fi
 
-info "  mean template: ${template_volumes}/${age}${sex}smwp1_mean.nii"
-info "  standard deviation template: ${template_volumes}/${age}${sex}smwp1_std.nii"
+info "  mean template: ${template_volumes}/${age}${sex}smwp1_mean.nii.gz"
+info "  standard deviation template: ${template_volumes}/${age}${sex}smwp1_std.nii.gz"
 
 ### Step 1: Create NII of original DCM files
 mkdir "${workdir}/nii-in"

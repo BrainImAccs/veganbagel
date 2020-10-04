@@ -20,7 +20,11 @@ if [ -z ${base_series_no+x} ]; base_series_no=31200; fi
 
 # Path to the templates relative to setup.veganbagel.bash
 #
-template_volumes="${__dir}/templates/rockland/"
+template_volumes="${__dir}/templates/rockland"
+
+# Path to the gray matter mask relative to setup.veganbagel.bash
+#
+gm_mask="${__dir}/templates/mask/GM_mask15.nii.gz"
 
 # Colour lookup tables (LUTs) for colouring volume changes
 #
@@ -44,9 +48,23 @@ z_min=2.5
 legend_height_shrink_factor=250
 legend_width_max=30
 
+# Path to the CAT12 standalone install (make sure to use v12.7)
+# cat12_*_R2017b_MCR_Linux.zip may be downloaded from http://www.neuro.uni-jena.de/cat12/
+#
+SPMROOT=/path/to/cat12-standalone
+
+# Path to the MATLAB Compile Runtime (MCR) R2017b (9.3)
+# May be downloaded from https://de.mathworks.com/products/compiler/matlab-runtime.html
+#
+MCRROOT=/path/to/mcr/v93
+
 # Path to med2image binary
 #
 med2image=$(which med2image)
+
+# Path to fslmaths binary
+#
+fslmaths=$(which fslmaths)
 
 # Path to ImageMagick binaries
 #
