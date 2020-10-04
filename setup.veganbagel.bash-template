@@ -16,7 +16,7 @@
 
 # Add this number to the original series's number (derived from DICOM tag 0020,0011)
 #
-base_series_no=31200
+if [ -z ${base_series_no+x} ]; base_series_no=31200; fi
 
 # Path to the templates relative to setup.veganbagel.bash
 #
@@ -43,17 +43,6 @@ z_min=2.5
 #
 legend_height_shrink_factor=250
 legend_width_max=30
-
-# Path to SPM12 install (will be included in $MATLABPATH before executing matlab)
-#
-spm12=/path/to/spm12
-
-# Path to MATLAB binary
-#
-# At this moment MATLAB is a requirement.
-# GNU Octave is just not quite there, yet: https://en.wikibooks.org/wiki/SPM/Octave
-#
-matlab=$(which matlab)
 
 # Path to med2image binary
 #
