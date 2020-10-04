@@ -27,6 +27,8 @@ function colourLUT {
   local depth=16
   # ... which is that number of pixels
   local pixels=65536
+  # Font for overlays
+  local font="TeXGyreHerosCondensed-Regular"
 
   # Get the number of colours in the "negative", i.e. below mean, i.e. "atrophied voxels" lookup table by counting the lines
   local colours_negative_no=$(cat "${colours_negative_lut}" | wc -l | cut -d' ' -f1)
@@ -132,9 +134,9 @@ function colourLUT {
   # Note: The legend will be mirrored (flop'ed) to later maintain radiological orientation
   ${convert} \
     "${output_dir}/clut/legend_colours.tiff" \
-    -gravity north  -font TeXGyreHeros -pointsize 10 -fill black -annotate +0+0 "+${z_max}" \
-    -gravity center -font TeXGyreHeros -pointsize 10 -fill white -annotate +1-1 '0' \
-    -gravity south  -font TeXGyreHeros -pointsize 10 -fill black -annotate +0+0 "-${z_max}" \
+    -gravity north  -font ${font} -pointsize 10 -fill black -annotate +0+0 "+${z_max}" \
+    -gravity center -font ${font} -pointsize 10 -fill white -annotate +1-1 '0' \
+    -gravity south  -font ${font} -pointsize 10 -fill black -annotate +0+0 "-${z_max}" \
     -flop \
     -resize ${legend_width}\> \
     "${output_dir}/clut/legend.tiff"
@@ -187,7 +189,7 @@ function colourLUT {
       "${output_dir}/tiff/$(basename ${tiff})" \
       -flop \
       -quality 100 \
-      -gravity south -font TeXGyreHeros -pointsize 9 -fill white -annotate +1+0 "NOT FOR DIAGNOSTIC USE" \
+      -gravity south -font ${font} -pointsize 9 -fill white -annotate +1+0 "NOT FOR DIAGNOSTIC USE" \
       "${jpg}"
   done
 
