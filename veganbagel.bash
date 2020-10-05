@@ -42,7 +42,8 @@
 read -r -d '' __usage <<-'EOF' || true # exits non-zero when EOF encountered
   -i --input [arg]    Directory containing the DICOM input files. Required.
   -k --keep-workdir   After running, copy the temporary work directory into the input directory.
-  -c --cleanup        After running, empty the source directory (reference DICOM and translation matrices are kept)
+  -c --cleanup        After running, empty the source directory (reference DICOM, translation matrices and logs are kept)
+  -t --total-cleanup  After running, delete the source directory
   -n --no-pacs        Do not send the results to the PACS.
   -v                  Enable verbose mode, print script as it is executed.
   -d --debug          Enables debug mode.
@@ -70,9 +71,14 @@ prefixUID=12
 
 function __b3bp_cleanup_before_exit {
   # Delete the temporary workdir, if necessary
-  if [[ ! "${arg_k:?}" = "1" ]] && [[ "${workdir:-}" ]]; then
+  if { [[ ! "${arg_k:?}" = "1" ]] || [[ "${arg_t:?}" = "1" ]]; } && [[ "${workdir:-}" ]]; then
     rm -rf "${workdir}"
-    info "Removed temporary workdir"
+    info "Removed temporary workdir ${workdir}"
+  fi
+  # Delete the source dir, if necessary
+  if [[ "${arg_t:?}" = "1" ]] && [[ "${source_dir:-}" ]]; then
+    rm -rf "${source_dir}"
+    info "Removed source dir ${source_dir}"
   fi
 }
 trap __b3bp_cleanup_before_exit EXIT
@@ -144,8 +150,6 @@ fi
 
 # shellcheck source=../brainstem/tools/bash/getDCMTag.bash
 source "${__dir}/../../tools/bash/getDCMTag.bash"
-# shellcheck source=../brainstem/tools/bash/convertNII2TIFF.bash
-source "${__dir}/../../tools/bash/convertNII2TIFF.bash"
 # shellcheck source=../brainstem/tools/convertIMG2DCM.bash
 source "${__dir}/../../tools/bash/convertIMG2DCM.bash"
 # shellcheck source=../brainstem/tools/bash/convertDCM2NII.bash
@@ -155,8 +159,6 @@ source "${__dir}/../../tools/bash/sendDCM.bash"
 
 # shellcheck source=bash/tools/estimateVolumechanges.bash
 source "${__dir}/tools/bash/estimateVolumechanges.bash"
-# shellcheck source=bash/tools/convertNII2TIFF_python.bash
-source "${__dir}/tools/bash/convertNII2TIFF_python.bash"
 # shellcheck source=bash/tools/colourLUT.bash
 source "${__dir}/tools/bash/colourLUT.bash"
 
@@ -228,37 +230,29 @@ fi
 info "  mean template: ${template_volumes}/${age}${sex}smwp1_mean.nii.gz"
 info "  standard deviation template: ${template_volumes}/${age}${sex}smwp1_std.nii.gz"
 
-### Step 1: Create NII of original DCM files
+### Create NII of original DCM files
 mkdir "${workdir}/nii-in"
 # convertDCM2NII exports the variable nii, which contains the full path to the converted NII file
 # The third parameter to convertDCM2NII intentionally disables the creation of a gzip'ed NII
 convertDCM2NII "${workdir}/dcm-in/" "${workdir}/nii-in" "n" || error "convertDCM2NII failed"
 
-### Step 2: Create TIFF of NII
-mkdir "${workdir}/nii-in-tiff"
-convertNII2TIFF "${nii}" "${workdir}/nii-in-tiff" || error "convertNII2TIFF failed"
-
-### Step 3: Estimate regional volume
+### Estimate regional volume
 # estimateVolumechanges export the variable zmap, which is the full path to the zmap
 estimateVolumechanges "${nii}" "${template_volumes}" "${age}" "${sex}" || error "estimateVolumechanges failed"
 
-### Step 4: Convert resulting zmap to TIFF (grayscale)
-mkdir "${workdir}/tiff-in-zmap"
-convertNII2TIFF_python "${zmap}" "${workdir}/tiff-in-zmap"
-
-### Step 5: Generate and apply colour lookup tables to the zmap, then merge with the original scan
+### Generate and apply colour lookup tables to the zmap, then merge with the original scan
 mkdir "${workdir}/out"
-colourLUT "${workdir}/nii-in-tiff" "${workdir}/tiff-in-zmap" "${workdir}/out" "${ref_dcm}"
+colourLUT "${nii}" "${zmap}" "${workdir}/out"
 
-### Step 6: Convert merged images to DICOM
+### Convert merged images to DICOM
 mkdir "${workdir}/dcm-out"
 # Get the series number from the reference DICOM and add $base_series_no from setup.veganbagel.bash
 ref_series_no=$(getDCMTag "${ref_dcm}" "0020,0011")
 series_no=$(echo "${base_series_no} + ${ref_series_no}" | bc)
 series_description=$(echo $(getDCMTag "${ref_dcm}" "0008,103e" "n") Volume Map)
-convertIMG2DCM "${workdir}/out/jpg" "${workdir}/dcm-out" ${series_no} "${series_description}" "${ref_dcm}" || error "convertIMG2DCM failed"
+convertIMG2DCM "${workdir}/out" "${workdir}/dcm-out" ${series_no} "${series_description}" "${ref_dcm}" || error "convertIMG2DCM failed"
 
-### Step 7: Modify some more DICOM tags specific to veganbagel
+### Modify some more DICOM tags specific to veganbagel
 
 # Set some version information on this tool
 "${dcmodify}" \
@@ -269,12 +263,12 @@ convertIMG2DCM "${workdir}/out/jpg" "${workdir}/dcm-out" ${series_no} "${series_
 
 info "Modified DICOM tags specific to $(basename ${0})"
 
-### Step 8: Send DCM to PACS
+### Send DCM to PACS
 if [[ ! "${arg_n:?}" = "1" ]]; then
   sendDCM "${workdir}/dcm-out/" "jpeg8" || error "sendDCM failed"
 fi
 
-### Step 9: Cleaning up
+### Cleaning up
 # Copy reference DICOM file to ref_dcm.dcm and copy translation matrices to the source dir
 info "Copying reference DICOM file and translation matrices to source dir"
 cp "${ref_dcm}" "${source_dir}/ref_dcm.dcm"
