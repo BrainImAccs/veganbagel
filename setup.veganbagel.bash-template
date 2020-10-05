@@ -31,8 +31,11 @@ gm_mask="${__dir}/templates/mask/GM_mask15.nii.gz"
 # These LUTs are part of the Colorcet: Collection of perceptually uniform colormaps
 # and can be found at https://github.com/pyviz/colorcet
 #
-colours_negative_lut="${__dir}/templates/lut/linear_blue_5-95_c73_n256.csv"
-colours_positive_lut="${__dir}/templates/lut/linear_kryw_0-100_c71_n256.csv"
+# Please make sure to use the notation suitable for Python's matplotlib get_cmap()
+# _r stands for "reverse"
+#
+colours_negative_lut="cet_linear_blue_5_95_c73_r"
+colours_positive_lut="cet_linear_kryw_0_100_c71"
 
 # Maximum standard deviations to consider in the LUT (everything above will just stay at the same colour)
 #
@@ -41,12 +44,6 @@ z_max=10
 # Minimum standard deviations to consider in the LUT (everything below will be transparent)
 #
 z_min=2.5
-
-# Size of the legend
-# TODO: Hacky, revise
-#
-legend_height_shrink_factor=250
-legend_width_max=30
 
 # Path to the CAT12 standalone install (make sure to use v12.7)
 # cat12_*_R2017b_MCR_Linux.zip may be downloaded from http://www.neuro.uni-jena.de/cat12/
@@ -58,16 +55,6 @@ SPMROOT=/path/to/cat12-standalone
 #
 MCRROOT=/path/to/mcr/v93
 
-# Path to med2image binary
-#
-med2image=$(which med2image)
-
 # Path to fslmaths binary
 #
 fslmaths=$(which fslmaths)
-
-# Path to ImageMagick binaries
-#
-convert=$(which convert)
-identify=$(which identify)
-composite=$(which composite)
