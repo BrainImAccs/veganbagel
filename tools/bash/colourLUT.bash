@@ -24,6 +24,10 @@ function colourLUT {
   # Use the nii_to_tif Python script to convert a NIfTI file into TIFF images
   local __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   "${__dir}/../python/anat_and_zmap_lut.py" \
+    --cool ${colours_negative_lut} \
+    --hot ${colours_positive_lut} \
+    --zmin ${z_min} \
+    --zmax ${z_max} \
     "${input_nii}" \
     "${input_zmap}" \
     "${output_dir}" || error "convertNII2TIFF failed"
