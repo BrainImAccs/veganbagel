@@ -34,7 +34,7 @@ gm_mask="${__dir}/templates/mask/GM_mask15.nii.gz"
 # Please make sure to use the notation suitable for Python's matplotlib get_cmap()
 # _r stands for "reverse"
 #
-colours_negative_lut="cet_linear_blue_5_95_c73_r"
+colours_negative_lut="cet_linear_blue_5_95_c73"
 colours_positive_lut="cet_linear_kryw_0_100_c71"
 
 # Maximum standard deviations to consider in the LUT (everything above will just stay at the same colour)

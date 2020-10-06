@@ -242,7 +242,7 @@ estimateVolumechanges "${nii}" "${template_volumes}" "${age}" "${sex}" || error 
 
 ### Generate and apply colour lookup tables to the zmap, then merge with the original scan
 mkdir "${workdir}/out"
-colourLUT "${nii}" "${zmap}" "${workdir}/out"
+colourLUT "${nii}" "${zmap}" "${workdir}/out" "${ref_dcm}"
 
 ### Convert merged images to DICOM
 mkdir "${workdir}/dcm-out"
