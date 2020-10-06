@@ -223,6 +223,7 @@ RUN set -eux \
   && echo '#!/usr/bin/env bash' >> /opt/entry.bash \
   && echo 'bash /opt/BrainSTEM/incoming/incoming-long.bash' >> /opt/entry.bash \
   && echo 'bash /opt/BrainSTEM/received/queue-long.bash' >> /opt/entry.bash \
+  && echo 'sleep 5' >> /opt/entry.bash \
   && echo 'tail -f /opt/BrainSTEM/*/*.log' >> /opt/entry.bash \
   && chmod 755 /opt/entry.bash /opt/BrainSTEM/tools/startJob.bash
 
