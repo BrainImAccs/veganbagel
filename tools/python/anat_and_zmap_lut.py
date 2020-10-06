@@ -38,7 +38,7 @@ def arg_parser():
     parser.add_argument('--zmax', type=float,  default=10,
                         help='Maximum standard deviations to consider in the LUT (everything above will just stay at the same colour)')
     parser.add_argument('--cool', type=str, default="cet_linear_blue_5_95_c73",
-                        help='Colormap for negative values (default: cet_linear_blue_5_95_c73, https://colorcet.holoviz.org/user_guide/index.html#Complete-list)')
+                        help='Colormap for negative values (default: cet_linear_blue_5_95_c73, https://colorcet.holoviz.org/usr_guide/index.html#Complete-list)')
     parser.add_argument('--hot', type=str, default="cet_linear_kryw_0_100_c71",
                         help='Colormap for positive values (default: cet_linear_kryw_0-100_c71, https://colorcet.holoviz.org/user_guide/index.html#Complete-list)')
     parser.add_argument('--transparency', type=int, default=25, choices=range(0,101), metavar="[0-100]",
@@ -60,8 +60,9 @@ def main():
         anat = nib.load(args.anat_file).get_fdata().astype(np.int16)
         zmap = nib.load(args.zmap_file).get_fdata().astype(np.float32)
 
-        # Define the colour map to be used from matplotlib
-        # https://matplotlib.org/3.1.0/tutorials/colors/colormaps.html
+        # Define the colour map to be used from either
+        # - https://matplotlib.org/3.1.0/tutorials/colors/colormaps.html
+        # - https://colorcet.holoviz.org/usr_guide/index.html#Complete-list
         hot = plt.get_cmap(args.hot)
         cool = plt.get_cmap(args.cool)
         # In order to plot the anatomical slices with windowing, we need to apply the reverse Greys "colour" map
@@ -69,58 +70,75 @@ def main():
 
         # Window according to center and width, if supplied
         if args.wcenter and args.wwidth:
+            # The lowest visible value should be window center minus half the window width
             lowest_visible_value = args.wcenter - (args.wwidth / 2)
             # Do not go below zero, which shouldn't happen in anatomical T1w MR images, anyway
             if lowest_visible_value < 0:
                 anat[anat < lowest_visible_value] = 0
             else:
-                anat[anat < lowest_visible_value] = lowest_visible_value
+                # Set all pixel values lower than the lowest visible value, as derived above, to the lowest visible value
+                anat[anat < lowest_visible_value] = int(lowest_visible_value)
 
+            # Set all pixel values abive the highest visible value (window center plus half the window width) to the highest visible value
             highest_visible_value = args.wcenter + (args.wwidth / 2)
-            anat[anat > highest_visible_value] = highest_visible_value
+            anat[anat > highest_visible_value] = int(highest_visible_value)
 
-        # Create an array with all negative values
+        # Create an array with all negative z-scores
         neg = np.copy(zmap)
-        # Ignore some negative values (derived from --zmin) in order to show "normal" z-scores as transparent 
+        # Set all z-scores greater than negative z-min to "not a number" (nan). Any nan's will be made transparent later.
         neg[zmap > (args.zmin * -1)] = float('nan')
-        # Turn all remaining values positive and scale by --zmax
+        # All remaining z-scores (between --zmin and --zmax) will be scaled to 0-1
         neg = ((neg * -1) - args.zmin) / (args.zmax - args.zmin)
         # Aynthing greater than --zmax will have the same colour
         neg[neg > 1] = 1
 
-        # Same approach as for negative values, but, well keeping it positive ;)
+        # Same approach as for negative values, just keeping it positive...
         pos = np.copy(zmap)
         pos[zmap < args.zmin] = float('nan')
         pos = (pos - args.zmin) / (args.zmax - args.zmin)
         pos[pos > 1] = 1
 
         # Create an "alpha channel" by combining the pos and neg array
-        # Anything not a number (nan), which does not contain intersting values for the colour map will be 0
+        # Anything not a number (nan), which does not contain interesting values for the colour map, will be 0, i.e. transparent
         alpha = np.nan_to_num(pos) + np.nan_to_num(neg)
         # Anything greater than 0 is therefore of interest, and will be shown
-        # Transparency ranges from 0 (complete) to 255 (solid).
-        # Keep some transparency for the colour map by multiplying 255 with a configurable value
+        # Transparency ranges from 0 (complete) to 255 (solid) in the alpha channel.
+        # Since we define the degree of transparency in percent (0-100), multiply 255 with the degree of "solidness"
         alpha[alpha > 0] = 255 * (1 - (args.transparency / 100))
 
-        legend_hot = hot(np.linspace([1] * 40, [0] * 40, 75))
-        legend_transparent = hot(np.full((75, 40), 0))
-        legend_cool = cool(np.linspace([0] * 40, [1] * 40, 75))
+        # Legend height is supposed to be 20% of the height of the image
+        # Calculate a shrink factor to shrink each part of the legend (hot, center, cool)
+        legend_height_shrink_factor = (0.3 * anat.shape[1]) / (args.zmax * 2 * 10)
 
-        fnt = ImageFont.truetype('/usr/share/texmf/fonts/opentype/public/tex-gyre/texgyreheroscn-regular.otf', 14)
-        L = Image.fromarray((np.vstack((legend_hot, legend_transparent, legend_cool)) * 255).astype(np.uint8))
+        L = Image.new("RGBA", (20, 20))
+        d = ImageDraw.Draw(L)
+        fnt = ImageFont.truetype(os.path.dirname(os.path.realpath(__file__)) + "/fonts/Beef'd.ttf", 5)
+        legend_text_width, legend_text_height = d.textsize('+' + str(int(args.zmax)), font = fnt)
+        legend_text_width = legend_text_width
+        legend_text_height = legend_text_height + 1
+
+        legend_height_hotcool = int((args.zmax - args.zmin) * 10 * legend_height_shrink_factor)
+        legend_height_center = int(args.zmin * 2 * 10 * legend_height_shrink_factor)
+        legend_height = legend_height_center + (legend_height_hotcool * 2)
+        # Make the legend width 20% of the height
+        legend_width = int(0.3 * legend_height)
+        if legend_width < legend_text_width:
+            legend_width = legend_text_width
+
+        legend_text = hot(np.full((legend_text_height, legend_width), 0))
+        legend_hot = hot(np.linspace([1] * legend_width, [0] * legend_width, legend_height_hotcool))
+        legend_transparent = hot(np.full((legend_height_center, legend_width), 0))
+        legend_cool = cool(np.linspace([0] * legend_width, [1] * legend_width, legend_height_hotcool))
+
+        L = Image.fromarray((np.vstack((legend_text, legend_hot, legend_transparent, legend_cool, legend_text)) * 255).astype(np.uint8))
 
         d = ImageDraw.Draw(L)
-        w, h = d.textsize('+10', font = fnt, stroke_width = 1)
-        d.text(((L.width - w)/2, 2), '+10', font = fnt, stroke_width = 1, stroke_fill = "black")
-        w, h = d.textsize('0', font = fnt, stroke_width = 1)
-        d.text(((L.width - w)/2, (L.height - h)/2), '0', font = fnt, stroke_width = 1, stroke_fill = "black")
-        w, h = d.textsize('-10', font = fnt, stroke_width = 1)
-        d.text(((L.width - w)/2, (L.height - 20)), '-10', font = fnt, stroke_width = 1, stroke_fill = "black")
-
-        shrink_factor = (0.4 * anat.shape[0]) / L.height
-        L = L.resize((int(L.width * shrink_factor), int(L.height * shrink_factor)))
-
-        fnt = ImageFont.truetype('/usr/share/texmf/fonts/opentype/public/tex-gyre/texgyreheroscn-regular.otf', 6)
+        w, h = d.textsize('+' + str(int(args.zmax)), font = fnt)
+        d.text(((L.width - w)/2, 0), '+' + str(int(args.zmax)), font = fnt, fill = "#A9A9A9")
+        #w, h = d.textsize('0', font = fnt, stroke_width = 1)
+        #d.text(((L.width - w)/2+1, (L.height - h)/2), '0', font = fnt)
+        w, h = d.textsize('-' + str(int(args.zmax)), font = fnt)
+        d.text(((L.width - w)/2, (L.height - legend_text_height)), '-' + str(int(args.zmax)), font = fnt, fill = "#A9A9A9")
 
         for i in range(1, anat.shape[2]+1):
             # Read, min/max scale and colour map the anatomical slice
@@ -146,8 +164,8 @@ def main():
             # Add obligatory message "NOT FOR DIAGNOSTIC USE" to bottom center of the slice
             d = ImageDraw.Draw(A)
             msg = "NOT FOR DIAGNOSTIC USE"
-            w, h = d.textsize(msg, font = fnt, stroke_width = 1)
-            d.text(((A.width - w)/2, (A.height - 10)), msg, font = fnt, stroke_width = 1, stroke_fill = "black")
+            w, h = d.textsize(msg, font = fnt)
+            d.text(((A.width - w)/2, (A.height - 10)), msg, font = fnt, fill = "#A9A9A9")
 
             A = A.convert("RGB")
             A.save(os.path.join(args.out_dir, f'bia-slice{i:03}.jpg'), format = 'JPEG', subsampling = 0, quality = 100)
