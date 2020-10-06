@@ -18,14 +18,30 @@ function colourLUT {
   local input_zmap="${2}"
   # Desired output directory
   local output_dir="${3}"
+  # Reference DICOM (for window center/width)
+  local ref_dcm="${4}"
 
   info "colorLUT start"
+
+  # Source the getDCMTag function, if necessary
+  if [[ ! "$(type -t getDCMTag)" = "function" ]]; then
+    source "${__dir}/../../tools/bash/getDCMTag.bash"
+  fi
+
+  # Get window center and width from reference DICOM
+  local wcenter=$(getDCMTag "${ref_dcm}" "0028,1050")
+  local wwidth=$(getDCMTag "${ref_dcm}" "0028,1051")
+
+  echo ${colours_negative_lut}
+  echo ${colours_positive_lut}
 
   # Use the nii_to_tif Python script to convert a NIfTI file into TIFF images
   local __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   "${__dir}/../python/anat_and_zmap_lut.py" \
     --cool ${colours_negative_lut} \
     --hot ${colours_positive_lut} \
+    --anat-window-center ${wcenter} \
+    --anat-window-width ${wwidth} \
     --zmin ${z_min} \
     --zmax ${z_max} \
     "${input_nii}" \
