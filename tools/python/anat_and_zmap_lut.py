@@ -106,40 +106,60 @@ def main():
         # Since we define the degree of transparency in percent (0-100), multiply 255 with the degree of "solidness"
         alpha[alpha > 0] = 255 * (1 - (args.transparency / 100))
 
-        # Legend height is supposed to be 20% of the height of the image
-        # Calculate a shrink factor to shrink each part of the legend (hot, center, cool)
-        legend_height_shrink_factor = (0.3 * anat.shape[1]) / (args.zmax * 2 * 10)
-
+        # Create an empty image, define and load the font, and draw a legend label to determine width and height of the label
         L = Image.new("RGBA", (20, 20))
         d = ImageDraw.Draw(L)
         fnt = ImageFont.truetype(os.path.dirname(os.path.realpath(__file__)) + "/fonts/Beef'd.ttf", 5)
+
+        # Derive the label from --zmax
         legend_text_width, legend_text_height = d.textsize('+' + str(int(args.zmax)), font = fnt)
         legend_text_width = legend_text_width
+        # Add a pixel to allow for some spacing of legend and colour bar
         legend_text_height = legend_text_height + 1
 
+        # Legend height is supposed to be 30% of the height of the image
+        # Calculate a shrink factor to shrink each part of the legend (hot, center, cool)
+        legend_height_shrink_factor = (0.3 * anat.shape[1]) / (args.zmax * 2 * 10)
+
+        # Determine height of the legend parts by applying the shrink factor
+        # Legend is split into the parts "text" for the labels, "hotcool" for either the hot and cool colour map, and "center" for the "transparent" center
         legend_height_hotcool = int((args.zmax - args.zmin) * 10 * legend_height_shrink_factor)
         legend_height_center = int(args.zmin * 2 * 10 * legend_height_shrink_factor)
         legend_height = legend_height_center + (legend_height_hotcool * 2)
-        # Make the legend width 20% of the height
+        # Make the legend width 30% of the height, but make sure it's at least as wide as the legend text label
         legend_width = int(0.3 * legend_height)
         if legend_width < legend_text_width:
             legend_width = legend_text_width
 
-        legend_text = hot(np.full((legend_text_height, legend_width), 0))
-        legend_hot = hot(np.linspace([1] * legend_width, [0] * legend_width, legend_height_hotcool))
-        legend_transparent = hot(np.full((legend_height_center, legend_width), 0))
-        legend_cool = cool(np.linspace([0] * legend_width, [1] * legend_width, legend_height_hotcool))
+        # Create the legend parts
+        legend_text = np.full((legend_text_height, legend_width), 0)
+        legend_hot = np.linspace([1] * legend_width, [0] * legend_width, legend_height_hotcool)
+        legend_transparent = np.full((legend_height_center, legend_width), 0)
+        legend_cool = np.linspace([0] * legend_width, [1] * legend_width, legend_height_hotcool)
 
-        L = Image.fromarray((np.vstack((legend_text, legend_hot, legend_transparent, legend_cool, legend_text)) * 255).astype(np.uint8))
+        # Colour map and stack the legend arrays into a single array
+        legend_stacked = np.vstack((grey(legend_text), hot(legend_hot), grey(legend_transparent), cool(legend_cool), grey(legend_text)))
+        # Create an image from the stacked, colour mapped legend array
+        L = Image.fromarray((legend_stacked * 255).astype(np.uint8))
 
+        # Default font colour
+        fnt_colour="#A9A9A9"
+
+        # Draw the text labels onto the legend image object, determined by --zmax and --zmin
         d = ImageDraw.Draw(L)
         w, h = d.textsize('+' + str(int(args.zmax)), font = fnt)
-        d.text(((L.width - w)/2, 0), '+' + str(int(args.zmax)), font = fnt, fill = "#A9A9A9")
-        #w, h = d.textsize('0', font = fnt, stroke_width = 1)
-        #d.text(((L.width - w)/2+1, (L.height - h)/2), '0', font = fnt)
+        d.text(((L.width - w)/2, 0), '+' + str(int(args.zmax)), font = fnt, fill = fnt_colour)
+        w, h = d.textsize('0', font = fnt)
+        # Nudge the 0 label a pixel to the top and right for visually more pleasing results
+        d.text(((L.width - w)/2+1, (L.height - h)/2-1), '0', font = fnt, fill = fnt_colour)
         w, h = d.textsize('-' + str(int(args.zmax)), font = fnt)
-        d.text(((L.width - w)/2, (L.height - legend_text_height)), '-' + str(int(args.zmax)), font = fnt, fill = "#A9A9A9")
+        d.text(((L.width - w)/2, (L.height - legend_text_height)), '-' + str(int(args.zmax)), font = fnt, fill = fnt_colour)
 
+        # For each slice of the anatomical image:
+        # - overlay a (partially) transparent colour map
+        # - Resize by a factor of 2 to make text more visually pleasing
+        # - Add legend and text and save as JPEG
+        #
         for i in range(1, anat.shape[2]+1):
             # Read, min/max scale and colour map the anatomical slice
             anat_slice = grey(anat[:,:,i-1])
@@ -158,15 +178,18 @@ def main():
             A.paste(C, (0, 0), C)
             # Rotate and mirror for radiological orientation
             A = ImageOps.mirror(A.transpose(Image.ROTATE_90))
+            # Resize by a factor of two to make the legend text drawn on the image more visually pleasing
+            A = A.resize((A.width * 2, A.height * 2))
             # Add legend
             A.paste(L, (5, 5))
 
             # Add obligatory message "NOT FOR DIAGNOSTIC USE" to bottom center of the slice
             d = ImageDraw.Draw(A)
-            msg = "NOT FOR DIAGNOSTIC USE"
+            msg = "Not for diagnostic use"
             w, h = d.textsize(msg, font = fnt)
             d.text(((A.width - w)/2, (A.height - 10)), msg, font = fnt, fill = "#A9A9A9")
 
+            # Convert to RGB (from RGBA) and write the resulting image as JPEG
             A = A.convert("RGB")
             A.save(os.path.join(args.out_dir, f'bia-slice{i:03}.jpg'), format = 'JPEG', subsampling = 0, quality = 100)
         return 0
