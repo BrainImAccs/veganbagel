@@ -18,7 +18,9 @@ These templates can then be used to generate atrophy maps for out-of-sample subj
 
 # Installation
 
-We recommend installing veganbagel using [Docker](https://www.docker.com). The container will expose a DICOM listener, which will accept and process 3D T1w brain images. The results will be sent back to a DICOM node. For testing, you can for example use [Horos](https://horosproject.org) to send and receive DICOM files.
+We recommend installing veganbagel using [Docker](https://www.docker.com). The container will expose a DICOM listener, which will accept 3D T1w brain images.
+
+The results will be sent back to a DICOM node. For testing, you can for example use [Horos](https://horosproject.org) to send and receive DICOM files.
 
 veganbagel will be made available on the Docker Hub soon. Currently, please download the Dockerfile and then build the image:
 
@@ -28,10 +30,15 @@ $ docker build -t veganbagel ./
 
 # Running
 
-Environment variables may be used to configure aspects of BrainSTEM and veganbagel (please see (`setup.(brainstem|veganbagel).bash`). For example, to have the results sent back to IP 192.168.0.27, port 11112 (AE Title `destination`), you may execute the container as follows:
+Environment variables may be used to configure aspects of BrainSTEM and veganbagel (please see (`setup.(brainstem|veganbagel).bash`). For example, to have the results sent back to IP `192.168.0.27`, port `11112` (AE Title `destination`), you may execute the container as follows:
 
 ```bash
-$ docker run -it -p 10105:10105/tcp --env called_aetitle=destination --env peer=192.168.0.27 --env port=11112 veganbagel
+$ docker run -it \
+	-p 10105:10105/tcp \
+	--env called_aetitle=destination \
+	--env peer=192.168.0.27 \
+	--env port=11112 \
+	veganbagel
 ```
 
 The DICOM node in the container listens on port `10105/tcp` by default.
