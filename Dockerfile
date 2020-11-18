@@ -94,7 +94,7 @@ RUN set -eux \
 #
 # dcm2niix source install adapted from NeuroDocker (https://github.com/ReproNim/neurodocker)
 #
-ENV DCM2NIIX_VERSION v1.0.20200331
+ENV DCM2NIIX_VERSION v1.0.20201102
 ENV PATH /opt/dcm2niix-${DCM2NIIX_VERSION}/bin:$PATH
 
 RUN set -eux \
