@@ -28,20 +28,11 @@ function colourLUT {
     source "${__dir}/../../tools/bash/getDCMTag.bash"
   fi
 
-  # Get window center and width from reference DICOM
-  local wcenter=$(getDCMTag "${ref_dcm}" "0028,1050")
-  local wwidth=$(getDCMTag "${ref_dcm}" "0028,1051")
-
-  local wcenter_rounded=$(echo "${wcenter} / 1" | bc)
-  local wwidth_rounded=$(echo "${wwidth} / 1" | bc)
-
   # Use the nii_to_tif Python script to convert a NIfTI file into TIFF images
   local __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   "${__dir}/../python/anat_and_zmap_lut.py" \
     --cool ${colours_negative_lut} \
     --hot ${colours_positive_lut} \
-    --anat-window-center ${wcenter_rounded} \
-    --anat-window-width ${wwidth_rounded} \
     --zmin ${z_min} \
     --zmax ${z_max} \
     "${input_nii}" \
