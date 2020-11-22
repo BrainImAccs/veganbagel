@@ -174,7 +174,8 @@ workdir=$(TMPDIR="${tmpdir}" mktemp --directory -t "${__base}-XXXXXX")
 info "  workdir: ${workdir}"
 
 # Copy all DICOM files, except for files which are of the modality presentation
-# state (PR) or a residual ref_dcm.dcm, into the workdir and create an index file
+# state (PR) or a residual ref_dcm.dcm, into the workdir and create an index file,
+# which contains the ImagePositionPatient DICOM tag (for sorting) and the DICOM file
 mkdir "${workdir}/dcm-in"
 ${dcmftest} "${source_dir}/"* | \
   grep -E "^yes:" | \
@@ -183,20 +184,27 @@ ${dcmftest} "${source_dir}/"* | \
     modality=$(getDCMTag "${dcm}" "0008,0060" "n")
     if [[ $modality != "PR" ]]; then
       cp "${dcm}" "${workdir}/dcm-in"
-      echo $(LANG=C printf "%03d" $(getDCMTag "${dcm}" "0020,0013" "n")) $dcm >> "${workdir}/index-dcm-in"
+      instanceNo=$(LANG=C printf "%03d" $(getDCMTag "${dcm}" "0020,0013" "n"))
+      imagePosPatient=$(getDCMTag "${dcm}" "0020,0032" "n")
+      echo ${instanceNo}\\"${imagePosPatient}" $dcm >> "${workdir}/index-dcm-in-unsorted"
     fi
   done || true
 set -u modality
+set -u imagePosPatient
+
+# The ImagePositionPatient tag contains information on the x, y and z position in mm of the
+# upper left voxel of the image. We sort by the z (axial), then x (sagittal), then y (coronal)
+# position to later extract the reference DICOM from the middle of the stack (see below) and
+# for properly merging colour maps with the original DICOMs
+sort -n -k4,4 -k2,2 -k3,3 -t'\' "${workdir}/index-dcm-in-unsorted" | sed -e 's/\\/ /' > "${workdir}/index-dcm-in"
 
 # Get the middle line (minus two) of the index-dcm-in file as the reference DICOM file
 # The reference DICOM file will be used as a source for DICOM tags, when (at the end)
-# a DICOM dataset is created to send it back to the PACS. Since reference scans might
-# be embedded inside the DICOM stack at the beginning, end, or in the middle, we
-# choose a DICOM file two off the center. This should yield a reasonable window/center
-# setting in case of MR examinations, as well.
+# a DICOM dataset is created to send it back to the PACS. This should yield a reasonable
+# window width/center setting in case of MR examinations, as well.
 dcm_index_lines=$(wc -l "${workdir}/index-dcm-in" | cut -d" " -f1)
 dcm_index_lines_middle=$(echo "($dcm_index_lines / 2) - 2" | bc)
-ref_dcm=$(sed -n "${dcm_index_lines_middle},${dcm_index_lines_middle}p" "${workdir}/index-dcm-in" | cut -d" " -f2)
+ref_dcm=$(sed -n "${dcm_index_lines_middle},${dcm_index_lines_middle}p" "${workdir}/index-dcm-in" | cut -d" " -f3)
 info "  ref_dcm: ${ref_dcm}"
 
 # Get and save the subject's name (for debugging reasons)
@@ -276,11 +284,12 @@ cp "${ref_dcm}" "${source_dir}/ref_dcm.dcm"
 # Remove the DICOM files from the source directory, but keep ref_dcm.dcm, translation matrices and log (if it exists)
 if [[ "${arg_c:?}" = "1" ]]; then
   if [ -e "${source_dir}/log" ]; then
-    info "Removing everything except reference DICOM, translation matrices and log from the source dir"
+    info "Removing everything except reference DICOM and log from the source dir. Keeping CAT12 reports."
   else
-    info "Removing everything except reference DICOM and translation matrices from the source dir"
+    info "Removing everything except reference DICOM from the source dir. Keeping CAT12 reports."
   fi
   find "${source_dir}" -type f -not -name 'ref_dcm.dcm' -not -name '*.mat' -not -name 'log' -delete
+  cp -a "${workdir}/nii-in/report" "${source_dir}"
 fi
 
 # Keep or discard the workdir. The exit trap (see __b3bp_cleanup_before_exit) is used to discard the temporary workdir.
