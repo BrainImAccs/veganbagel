@@ -57,7 +57,7 @@ def main():
         args = arg_parser().parse_args()
 
         # Load the anatomical and zmap NIfTI
-        anat = nib.load(args.anat_file).get_fdata().astype(np.int16)
+        anat = nib.load(args.anat_file).get_fdata()
         zmap = nib.load(args.zmap_file).get_fdata().astype(np.float32)
 
         # Define the colour map to be used from either
