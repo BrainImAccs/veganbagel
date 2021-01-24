@@ -161,6 +161,8 @@ source "${__dir}/../../tools/bash/sendDCM.bash"
 source "${__dir}/tools/bash/estimateVolumechanges.bash"
 # shellcheck source=bash/tools/colourLUT.bash
 source "${__dir}/tools/bash/colourLUT.bash"
+# shellcheck source=bash/tools/qcOverlay.bash
+source "${__dir}/tools/bash/qcOverlay.bash"
 
 ### Runtime
 ##############################################################################
@@ -187,6 +189,7 @@ ${dcmftest} "${source_dir}/"* | \
       instanceNo=$(LANG=C printf "%03d" $(getDCMTag "${dcm}" "0020,0013" "n"))
       imagePosPatient=$(getDCMTag "${dcm}" "0020,0032" "n")
       echo ${instanceNo}\\"${imagePosPatient}" $dcm >> "${workdir}/index-dcm-in-unsorted"
+      # Please ignore the following ", it just fixes vim syntax highlighting after aboves escape
     fi
   done || true
 set -u modality
@@ -248,33 +251,56 @@ convertDCM2NII "${workdir}/dcm-in/" "${workdir}/nii-in" "n" || error "convertDCM
 # estimateVolumechanges export the variable zmap, which is the full path to the zmap
 estimateVolumechanges "${nii}" "${template_volumes}" "${age}" "${sex}" || error "estimateVolumechanges failed"
 
+## ColourLUT
+
 ### Generate and apply colour lookup tables to the zmap, then merge with the original scan
-mkdir "${workdir}/out"
-colourLUT "${nii}" "${zmap}" "${workdir}/out" "${ref_dcm}"
+mkdir "${workdir}/cmap-out"
+colourLUT "${nii}" "${zmap}" "${workdir}/cmap-out" "${ref_dcm}"
 
-### Convert merged images to DICOM
-mkdir "${workdir}/dcm-out"
-# Get the series number from the reference DICOM and add $base_series_no from setup.veganbagel.bash
-ref_series_no=$(getDCMTag "${ref_dcm}" "0020,0011")
-series_no=$(echo "${base_series_no} + ${ref_series_no}" | bc)
-series_description=$(echo $(getDCMTag "${ref_dcm}" "0008,103e" "n") Volume Map)
-convertIMG2DCM "${workdir}/out" "${workdir}/dcm-out" ${series_no} "${series_description}" "${ref_dcm}" || error "convertIMG2DCM failed"
+### Generate and apply colour lookup tables to the zmap, then merge with the original scan
+mkdir "${workdir}/qc-out"
+qc=$(echo ${zmap} | sed -e 's%/wsmwp1%/p0%')
+qcOverlay "${nii}" "${qc}" "${workdir}/qc-out" "${ref_dcm}"
 
-### Modify some more DICOM tags specific to veganbagel
+# Get the series number and description from the reference DICOM
+ref_series_no=$(getDCMTag "${ref_dcm}" "0020,0011" "n")
+ref_series_description=$(getDCMTag "${ref_dcm}" "0008,103e" "n")
 
-# Set some version information on this tool
-"${dcmodify}" \
-  --no-backup \
-  --insert "(0008,1090)"="BrainImAccs veganbagel - Research" \
-  --insert "(0018,1020)"="BrainImAccs veganbagel ${version_veganbagel}" \
-  "${workdir}/dcm-out"/*.dcm
+# Convert colour map and QC images to DICOM and export to PACS
+for type in cmap qc; do
+  info "Processing ${type}"
 
-info "Modified DICOM tags specific to $(basename ${0})"
+  ### Convert merged images to DICOM
+  mkdir "${workdir}/${type}-dcm-out"
 
-### Send DCM to PACS
-if [[ ! "${arg_n:?}" = "1" ]]; then
-  sendDCM "${workdir}/dcm-out/" "jpeg8" || error "sendDCM failed"
-fi
+  # Define series number and description
+  if [[ "${type}" = "cmap" ]]; then
+    series_no=$(echo "${base_series_no} + ${ref_series_no}" | bc)
+    series_description="${ref_series_description} Volume Map"
+  elif [[ "${type}" = "qc" ]]; then
+    series_no=$(echo "${base_series_no} + ${ref_series_no}" | bc)
+    series_description="${ref_series_description} QC: Segmentation"
+  fi
+
+  # Convert previously generated images to DICOM
+  convertIMG2DCM "${workdir}/${type}-out" "${workdir}/${type}-dcm-out" ${series_no} "${series_description}" "${ref_dcm}" || error "convertIMG2DCM failed"
+
+  ### Modify some more DICOM tags specific to veganbagel
+
+  # Set some version information on this tool
+  "${dcmodify}" \
+    --no-backup \
+    --insert "(0008,1090)"="BrainImAccs veganbagel - Research" \
+    --insert "(0018,1020)"="BrainImAccs veganbagel ${version_veganbagel}" \
+    "${workdir}/${type}-dcm-out"/*.dcm
+
+  info "  Modified DICOM tags specific to $(basename ${0})"
+
+  ### Send DCM to PACS
+  if [[ ! "${arg_n:?}" = "1" ]]; then
+    sendDCM "${workdir}/${type}-dcm-out/" "jpeg8" || error "sendDCM failed"
+  fi
+done
 
 ### Cleaning up
 # Copy reference DICOM file to ref_dcm.dcm and copy translation matrices to the source dir
