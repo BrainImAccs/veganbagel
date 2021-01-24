@@ -48,7 +48,7 @@ def arg_parser():
     parser.add_argument('--anat-window-width', dest='wwidth', type=int,
                         help='Window width for anatomical images (optional, otherwise min/max will be used. Must be defined with --anat-window-center.')
     parser.add_argument('out_dir', type=str, 
-                        help='path to output the corresponding tif image slices')
+                        help='path to output the corresponding JPEG image slices')
     return parser
 
 def main():
@@ -103,7 +103,7 @@ def main():
         alpha = np.nan_to_num(pos) + np.nan_to_num(neg)
         # Anything greater than 0 is therefore of interest, and will be shown
         # Transparency ranges from 0 (complete) to 255 (solid) in the alpha channel.
-        # Since we define the degree of transparency in percent (0-100), multiply 255 with the degree of "solidness"
+        # Since we define the degree of transparency in percent (0-100), we multiply 255 with the degree of "solidness"
         alpha[alpha > 0] = 255 * (1 - (args.transparency / 100))
 
         # Create an empty image, define and load the font, and draw a legend label to determine width and height of the label
@@ -156,7 +156,7 @@ def main():
         d.text(((L.width - w)/2, (L.height - legend_text_height)), '-' + str(int(args.zmax)), font = fnt, fill = fnt_colour)
 
         # For each slice of the anatomical image:
-        # - overlay a (partially) transparent colour map
+        # - Overlay a (partially) transparent colour map
         # - Resize by a factor of 2 to make text more visually pleasing
         # - Add legend and text and save as JPEG
         #
@@ -187,7 +187,7 @@ def main():
             d = ImageDraw.Draw(A)
             msg = "Not for diagnostic use"
             w, h = d.textsize(msg, font = fnt)
-            d.text(((A.width - w)/2, (A.height - 10)), msg, font = fnt, fill = "#A9A9A9")
+            d.text(((A.width - w)/2, (A.height - 10)), msg, font = fnt, fill = fnt_colour)
 
             # Convert to RGB (from RGBA) and write the resulting image as JPEG
             A = A.convert("RGB")
