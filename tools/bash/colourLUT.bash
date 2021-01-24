@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
-# Takes greyscale input images (in this case the TIFF files generated from the zmap) and uses a colour lookup
-# table (LUT) to colour them. Then, these images are merged on top of the structural greyscale images in a
-# semi-transparent fashion. 
+# Takes greyscale zmap input images and uses a colour lookup table (LUT) to colour them. Then, these
+# images are merged on top of the structural greyscale images in a semi-transparent fashion. 
 #
 # In setup.veganbagel.sh a threshold can be defined below which full transparency will be enforced (e.g.
 # everything 2.5 standard deviations from the mean will be transparent). Also, a maximum threshold is used
@@ -12,9 +11,9 @@
 #
 
 function colourLUT {
-  # Input TIFF files (i.e. greyscale structural T1w images generated from the NIfTI file)
+  # Input greyscale structural T1w images in the NIfTI format
   local input_nii="${1}"
-  # Input greyscale z-maps, already converted to TIFF
+  # Input greyscale z-maps in the NIfTI format
   local input_zmap="${2}"
   # Desired output directory
   local output_dir="${3}"
@@ -28,7 +27,7 @@ function colourLUT {
     source "${__dir}/../../tools/bash/getDCMTag.bash"
   fi
 
-  # Use the nii_to_tif Python script to convert a NIfTI file into TIFF images
+  # Use the anat_and_zmap_lut Python script for colour mapping, merging and export JPEG files
   local __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   "${__dir}/../python/anat_and_zmap_lut.py" \
     --cool ${colours_negative_lut} \
@@ -37,7 +36,7 @@ function colourLUT {
     --zmax ${z_max} \
     "${input_nii}" \
     "${input_zmap}" \
-    "${output_dir}" || error "convertNII2TIFF failed"
+    "${output_dir}" || error "anat_and_zmap_lut failed"
 
   info "colourLUT done"
 }
