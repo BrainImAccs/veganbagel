@@ -197,6 +197,7 @@ RUN set -eux \
 #
 ENV BIA_MODULE veganbagel
 
+ARG TSTAMP=unknown
 RUN set -eux \
   && git clone https://github.com/BrainImAccs/BrainSTEM.git /opt/BrainSTEM \
   && cd /opt/BrainSTEM \
@@ -215,16 +216,11 @@ RUN set -eux \
   && cp \
       /opt/BrainSTEM/tools/startJob.bash-template \
       /opt/BrainSTEM/tools/startJob.bash \
-  && echo "\"\${__dir}/../modules/${BIA_MODULE}/${BIA_MODULE}.bash\" -i \"\$2\" --total-cleanup" >> /opt/BrainSTEM/tools/startJob.bash \
-  && groupadd -r bia \
-  && useradd -r -g bia -m bia \
-  && chown bia:bia /opt/BrainSTEM/incoming -R \
-  && chown bia:bia /opt/BrainSTEM/received -R \
+  && useradd --system --user-group --create-home --uid 999 bia \
   && echo '#!/usr/bin/env bash' >> /opt/entry.bash \
-  && echo 'bash /opt/BrainSTEM/incoming/incoming-long.bash' >> /opt/entry.bash \
-  && echo 'bash /opt/BrainSTEM/received/queue-long.bash' >> /opt/entry.bash \
-  && echo 'sleep 5' >> /opt/entry.bash \
-  && echo 'tail -f /opt/BrainSTEM/*/*.log' >> /opt/entry.bash \
+  && echo 'bash /opt/BrainSTEM/incoming/incoming.bash &' >> /opt/entry.bash \
+  && echo 'bash /opt/BrainSTEM/received/queue.bash &' >> /opt/entry.bash \
+  && echo 'wait' >> /opt/entry.bash \
   && chmod 755 /opt/entry.bash /opt/BrainSTEM/tools/startJob.bash
 
 USER bia
