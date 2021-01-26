@@ -162,7 +162,6 @@ def main():
         #
         for i in range(1, anat.shape[2]+1):
             # Read, min/max scale and colour map the anatomical slice
-            anat_slice = grey(anat[:,:,i-1])
             sm = cm.ScalarMappable(cmap = grey)
             A = Image.fromarray(sm.to_rgba(anat[:,:,i-1], bytes=True))
 
@@ -170,7 +169,7 @@ def main():
             cmap_slice = hot(pos[:,:,i-1]) + cool(neg[:,:,i-1])
             C = Image.fromarray((cmap_slice[:, :, :3] * 255).astype(np.uint8))
 
-            # Use the previously defined alpha, turn it into an image and use it for 
+            # Use the previously defined alpha, turn it into an image and use it as an alpha channel for the colour map
             T = Image.fromarray(alpha[:,:,i-1].astype(np.uint8))
             C.putalpha(T)
 
