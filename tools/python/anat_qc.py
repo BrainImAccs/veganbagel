@@ -13,7 +13,7 @@ import os
 import sys
 
 from PIL import Image
-from PIL import ImageFont, ImageDraw, ImageOps
+from PIL import ImageFont, ImageDraw, ImageOps, ImageFilter
 
 import nibabel as nib
 import numpy as np
@@ -32,10 +32,6 @@ def arg_parser():
                         help='Path to the quality control (QC) NIfTI image')
     parser.add_argument('--transparency', type=int, default=25, choices=range(0,101), metavar="[0-100]",
                         help='Transparency of colour map in percent (default: 25)')
-    parser.add_argument('--anat-window-center', dest='wcenter', type=int,
-                        help='Window center for anatomical images (optional, otherwise center of min/max will be used. Must be defined with --anat-window-width.')
-    parser.add_argument('--anat-window-width', dest='wwidth', type=int,
-                        help='Window width for anatomical images (optional, otherwise min/max will be used. Must be defined with --anat-window-center.')
     parser.add_argument('out_dir', type=str, 
                         help='path to output the corresponding JPEG image slices')
     return parser
@@ -49,29 +45,24 @@ def main():
         anat = nib.load(args.anat_file).get_fdata()
         qc = nib.load(args.qc_file).get_fdata()
 
+        # Normalize anat
+        anat = (anat / np.max(anat)) * np.max(qc)
+
         # In order to plot the anatomical slices with windowing, we need to apply the reverse Greys "colour" map
         grey = plt.get_cmap("Greys_r")
 
-        # Window according to center and width, if supplied
-        if args.wcenter and args.wwidth:
-            # The lowest visible value should be window center minus half the window width
-            lowest_visible_value = args.wcenter - (args.wwidth / 2)
-            # Do not go below zero, which shouldn't happen in anatomical T1w MR images, anyway
-            if lowest_visible_value < 0:
-                anat[anat < lowest_visible_value] = 0
-            else:
-                # Set all pixel values lower than the lowest visible value, as derived above, to the lowest visible value
-                anat[anat < lowest_visible_value] = int(lowest_visible_value)
-
-            # Set all pixel values abive the highest visible value (window center plus half the window width) to the highest visible value
-            highest_visible_value = args.wcenter + (args.wwidth / 2)
-            anat[anat > highest_visible_value] = int(highest_visible_value)
-
         # Create an alpha channel for the quality control to highlight segmented areas
+        # 0 = 100% transparency, 255 = 0% transparency/solid
         alpha_qc = np.copy(qc)
-        alpha_qc[alpha_qc > 0] = 255 * (1 - (args.transparency / 100))
+        alpha_qc[alpha_qc > 0] = 50
+        alpha_qc[alpha_qc == 0] = 255 * (1 - (args.transparency / 100))
 
-        # Default font colour
+        # Create a binary mask of the QC volume for contour detection later on
+        qc_binary = np.copy(qc)
+        qc_binary[qc_binary > 0] = np.max(qc)
+
+        # Default font and font colour
+        fnt = ImageFont.truetype(os.path.dirname(os.path.realpath(__file__)) + "/fonts/Beef'd.ttf", 5)
         fnt_colour="#A9A9A9"
 
         # For each slice of the anatomical image:
@@ -80,21 +71,30 @@ def main():
         # - Add legend and text and save as JPEG
         #
         for i in range(1, anat.shape[2]+1):
-            # Read, min/max scale and colour map the anatomical slice
-            anat_slice = grey(anat[:,:,i-1])
             sm = cm.ScalarMappable(cmap = grey)
+
+            # Read the anatomical slice, creating a min/max scaled grey RGBA image
             A = Image.fromarray(sm.to_rgba(anat[:,:,i-1], bytes=True))
 
-            # Read the QC image slice, create a RGBA-image
-            qc_slice = grey(qc[:,:,i-1])
-            C = Image.fromarray((qc_slice[:, :, :3] * 255).astype(np.uint8))
+            # Read the QC image slice, creating a min/max scalred grey RGBA image
+            C = Image.fromarray(sm.to_rgba(qc[:,:,i-1], bytes=True))
 
-            # Use the previously defined alpha, turn it into an image and use it for 
+            # Use the previously defined alpha map, turn it into an image and use it as the alpha channel on C
             T = Image.fromarray(alpha_qc[:,:,i-1].astype(np.uint8))
             C.putalpha(T)
 
-            # Overlay the transparent colour map onto the anatomical images
+            # Read the previously defined binary mask, then ...
+            B = Image.fromarray(sm.to_rgba(qc_binary[:,:,i-1], bytes=True))
+            # ... find the outer contours and invert black/white
+            E = B.filter(ImageFilter.CONTOUR).convert('L')
+            E = ImageOps.invert(E)
+            # Crop the outer 1 px border (which would otherwise be white)
+            E = ImageOps.crop(E, (1, 1))
+
+            # Overlay the QC image onto the anatomical images
             A.paste(C, (0, 0), C)
+            # Overlay the outer contour of the binary mask onto both images (note that we nudge by 1 px after cropping above)
+            A.paste(E, (1, 1), E)
             # Rotate and mirror for radiological orientation
             A = ImageOps.mirror(A.transpose(Image.ROTATE_90))
             # Resize by a factor of two to make the legend text drawn on the image more visually pleasing

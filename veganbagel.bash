@@ -259,7 +259,7 @@ colourLUT "${nii}" "${zmap}" "${workdir}/cmap-out" "${ref_dcm}"
 
 ### Generate and apply colour lookup tables to the zmap, then merge with the original scan
 mkdir "${workdir}/qc-out"
-qc=$(echo ${zmap} | sed -e 's%/wsmwp1%/p0%')
+qc=$(dirname "${zmap}")/p0$(basename "${nii}")
 qcOverlay "${nii}" "${qc}" "${workdir}/qc-out" "${ref_dcm}"
 
 # Get the series number and description from the reference DICOM
@@ -268,6 +268,7 @@ ref_series_description=$(getDCMTag "${ref_dcm}" "0008,103e" "n")
 
 # Convert colour map and QC images to DICOM and export to PACS
 for type in cmap qc; do
+  echo
   info "Processing ${type}"
 
   ### Convert merged images to DICOM
