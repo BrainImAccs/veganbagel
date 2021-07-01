@@ -67,8 +67,9 @@ RUN set -eux \
 #
 # Install CAT12 Standalone in /opt/cat12/
 #
-ENV CAT_VERSION 12
-ENV CAT_REVISION latest
+ENV CAT_VERSION_MAJOR 12
+ENV CAT_VERSION_MINOR 7
+ENV CAT_REVISION r1743
 ENV SPM_HTML_BROWSER 0
 ENV MCR_INHIBIT_CTF_LOCK 1
 
@@ -79,22 +80,22 @@ RUN set -eux \
   && wget \
       --progress=bar:force \
       -P /opt \
-      http://www.neuro.uni-jena.de/cat${CAT_VERSION}/cat${CAT_VERSION}_${CAT_REVISION}_${MATLAB_VERSION}_MCR_Linux.zip \
+      http://www.neuro.uni-jena.de/cat${CAT_VERSION_MAJOR}/CAT${CAT_VERSION_MAJOR}.${CAT_VERSION_MINOR}_${CAT_REVISION}_${MATLAB_VERSION}_MCR_Linux.zip \
   && unzip \
-      -q /opt/cat${CAT_VERSION}_${CAT_REVISION}_${MATLAB_VERSION}_MCR_Linux.zip \
+      -q /opt/CAT${CAT_VERSION_MAJOR}.${CAT_VERSION_MINOR}_${CAT_REVISION}_${MATLAB_VERSION}_MCR_Linux.zip \
       -d /opt \
-  && mv /opt/MCR_Linux /opt/cat${CAT_VERSION} \
-  && rm -f /opt/cat${CAT_VERSION}_${CAT_REVISION}_${MATLAB_VERSION}_MCR_Linux.zip \
-  && LD_LIBRARY_PATH=/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/runtime/glnxa64:/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/bin/glnxa64:/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/sys/os/glnxa64:/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/sys/opengl/lib/glnxa64:/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/extern/bin/glnxa64 /opt/cat${CAT_VERSION}/spm${CAT_VERSION} function exit \
-  && find /opt/cat${CAT_VERSION}/ -type d -exec chmod 555 {} \; \
-  && find /opt/cat${CAT_VERSION}/spm${CAT_VERSION}_mcr -type f -exec chmod 444 {} \; \
-  && chmod 555 /opt/cat${CAT_VERSION}/run_spm${CAT_VERSION}.sh /opt/cat${CAT_VERSION}/spm${CAT_VERSION} \
-  && chmod -R u-w,g-w,o-w /opt/cat${CAT_VERSION}
+  && mv /opt/CAT${CAT_VERSION_MAJOR}.${CAT_VERSION_MINOR}_${CAT_REVISION}_${MATLAB_VERSION}_MCR_Linux /opt/cat${CAT_VERSION_MAJOR} \
+  && rm -f /opt/CAT${CAT_VERSION_MAJOR}.${CAT_VERSION_MINOR}_${CAT_REVISION}_${MATLAB_VERSION}_MCR_Linux.zip \
+  && LD_LIBRARY_PATH=/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/runtime/glnxa64:/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/bin/glnxa64:/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/sys/os/glnxa64:/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/sys/opengl/lib/glnxa64:/opt/mcr-${MATLAB_VERSION}/${MCR_VERSION}/extern/bin/glnxa64 /opt/cat${CAT_VERSION_MAJOR}/spm${CAT_VERSION_MAJOR} function exit \
+  && find /opt/cat${CAT_VERSION_MAJOR}/ -type d -exec chmod 555 {} \; \
+  && find /opt/cat${CAT_VERSION_MAJOR}/spm${CAT_VERSION_MAJOR}_mcr -type f -exec chmod 444 {} \; \
+  && chmod 555 /opt/cat${CAT_VERSION_MAJOR}/run_spm${CAT_VERSION_MAJOR}.sh /opt/cat${CAT_VERSION_MAJOR}/spm${CAT_VERSION_MAJOR} \
+  && chmod -R u-w,g-w,o-w /opt/cat${CAT_VERSION_MAJOR}
 
 #
 # dcm2niix source install adapted from NeuroDocker (https://github.com/ReproNim/neurodocker)
 #
-ENV DCM2NIIX_VERSION v1.0.20201102
+ENV DCM2NIIX_VERSION v1.0.20210317
 ENV PATH /opt/dcm2niix-${DCM2NIIX_VERSION}/bin:$PATH
 
 RUN set -eux \
@@ -123,7 +124,7 @@ RUN set -eux \
 #
 # FSL install adapted from NeuroDocker (https://github.com/ReproNim/neurodocker)
 #
-ENV FSL_VERSION 6.0.3
+ENV FSL_VERSION 6.0.4
 ENV FSLDIR /opt/fsl-${FSL_VERSION}
 ENV FSLOUTPUTTYPE NIFTI
 ENV FSLMULTIFILEQUIT TRUE
@@ -187,10 +188,6 @@ RUN set -eux \
       matplotlib \
       pillow \
       colorcet
-#  ImageMagick is not in use anymore
-#  && sed \
-#      -E 's/<policy domain="resource" name="(width|height)" value=".*"\/>/<policy domain="resource" name="\1" value="128KP"\/>/' \
-#      -i /etc/ImageMagick-6/policy.xml
 
 #
 # Install BrainSTEM and init the needed submodules
@@ -210,7 +207,7 @@ RUN set -eux \
       /opt/BrainSTEM/setup.brainstem.bash \
   && cat /opt/BrainSTEM/modules/${BIA_MODULE}/setup.${BIA_MODULE}.bash-template | \
       sed \
-        -e "s%^SPMROOT=/path/to/cat12-standalone%SPMROOT=/opt/cat${CAT_VERSION}%" \
+        -e "s%^SPMROOT=/path/to/cat12-standalone%SPMROOT=/opt/cat${CAT_VERSION_MAJOR}%" \
         -e "s%^MCRROOT=/path/to/mcr/v93%MCRROOT=/opt/mcr-${MATLAB_VERSION}/v93%" \
       > /opt/BrainSTEM/modules/${BIA_MODULE}/setup.${BIA_MODULE}.bash \
   && cp \
@@ -221,7 +218,8 @@ RUN set -eux \
   && echo 'bash /opt/BrainSTEM/incoming/incoming.bash &' >> /opt/entry.bash \
   && echo 'bash /opt/BrainSTEM/received/queue.bash &' >> /opt/entry.bash \
   && echo 'wait' >> /opt/entry.bash \
-  && chmod 755 /opt/entry.bash /opt/BrainSTEM/tools/startJob.bash
+  && chmod 755 /opt/entry.bash /opt/BrainSTEM/tools/startJob.bash \
+  && chown bia:bia /opt/BrainSTEM/incoming /opt/BrainSTEM/received
 
 USER bia
 
