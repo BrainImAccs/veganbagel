@@ -131,7 +131,6 @@ if [[ ! -f "${__dir}/setup.veganbagel.bash" ]]; then
 else
   # shellcheck source=setup.veganbagel.bash
   source "${__dir}/setup.veganbagel.bash"
-  export LANG=${language_encoding}
 fi
 
 # Check if the input/source directory exists
