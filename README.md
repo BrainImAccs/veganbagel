@@ -43,6 +43,23 @@ $ docker run -it \
 
 The DICOM node in the container listens on port `10105/tcp` by default.
 
+# Development
+
+If you would like to pull either veganbagel or BrainSTEM from a different GitHub account, or would like to us a different branch, you may use `--build-arg` when building the cointainer:
+
+```bash
+$ docker build \
+  -t veganbagel \
+  --build-arg BIA_GITHUB_USER_BRAINSTEM=user \
+  --build-arg BIA_BRANCH_BRAINSTEM=BrainSTEM-branch \
+  --build-arg BIA_GITHUB_USER_MODULE=user \
+  --build-arg BIA_BRANCH_MODULE=veganbagel-branch \
+  --build-arg BIA_TSTAMP=$(date "+%s") \
+  ./
+```
+
+By providing a timestamp to `BIA_TSTAMP` Docker will always pull the latest git version of veganbagel and BrainSTEM.
+
 # Acknowledgements
 
 The main scripts are based on the [BASH3 Boilerplate](http://bash3boilerplate.sh).
