@@ -16,11 +16,6 @@ function qcOverlay {
 
   info "qcOverlay start"
 
-  # Source the getDCMTag function, if necessary
-  if [[ ! "$(type -t getDCMTag)" = "function" ]]; then
-    source "${__dir}/../../tools/bash/getDCMTag.bash"
-  fi
-
   # Use the anat_qc Python script to overlay QC onto structural images and export JPEG files
   local __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   "${__dir}/../python/anat_qc.py" \
