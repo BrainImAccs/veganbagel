@@ -4,85 +4,84 @@
 #
 
 function estimateVolumechanges {
-  # NIfTI input file
+  # Original NIfTI input file
   local input_nii="${1}"
-  # Directory of the normative cohort volume templates
-  local templates="${2}"
+  # Processed and smoothed NIfTI input file
+  local processed_smoothed_nii="${2}"
+  # Output and working directory
+  local output_dir=$(echo ${3} | sed -e 's%/$%%')
+  # Directory of the calculated age- and sex-specific template(s)
+  local zmaps="${4}"
   # Age of the current subject
-  local age="${3}"
+  local age="${5}"
   # Sex of the current subject
-  local sex="${4}"
+  local sex="${6}"
+  # Reference DICOM
+  local ref_dcm="${7}"
 
-  info "estimageVolumechanges start"
+  # Source the colourLUT function, if necessary
+  if [[ ! "$(type -t colourLUT)" = "function" ]]; then
+    source "${__dir}/tools/bash/colourLUT.bash"
+  fi
+
+  # Source the qcOverlay function, if necessary
+  if [[ ! "$(type -t qcOverlay)" = "function" ]]; then
+    source "${__dir}/tools/bash/qcOverlay.bash"
+  fi
+
+  info "estimateVolumechanges start"
+
+  # Supress output of CAT12 unless -d (debug mode) has been specified
+  local redirect=""
+  if [[ "$LOG_LEVEL" == "4" ]]; then
+    redirect=/dev/stderr
+  else
+    redirect=/dev/null
+  fi
 
   # Split the full path to the NIfTI file in filename and dirname
-  local name_nii=$(basename "${input_nii}")
-  local dir_processed=$(dirname "${input_nii}")/mri/
+  local name_input_nii=$(basename "${input_nii}")
+  local name_processed_smoothed_nii=$(basename "${processed_smoothed_nii}")
+  local dir_processed_smoothed=$(dirname "${processed_smoothed_nii}")
 
-  # Start CAT12 segmentation
-  info "  Segmentation start"
-  ${SPMROOT}/standalone/cat_standalone.sh \
-    -b "${__dir}/tools/cat12/segment.batch" \
-    "${input_nii}" || error "CAT12 segmentation failed"
-
-  # Path to the result of CAT12 standalone segmentation
-  local processed_nii="${dir_processed}/mwp1${name_nii}"
-  if [[ ! -f "${processed_nii}" ]]; then error "Could not find ${processed_nii}."; fi
-  info "  Segmentation done"
-
-  # Start smoothing
-  info "  Smoothing start"
-  ${SPMROOT}/standalone/cat_standalone.sh \
-    -b "${__dir}/tools/cat12/smooth.batch" \
-    "${processed_nii}" || error "CAT12 smoothing failed"
-
-  # Path to the result of CAT12 standalone smoothing
-  local processed_smoothed_nii="${dir_processed}/smwp1${name_nii}"
-  if [[ ! -f "${processed_smoothed_nii}" ]]; then error "Could not find ${processed_smoothed_nii}."; fi
-  info "  Smoothing done"
-
-  # Estimate the volume
-  #
-  # 1. Subtract the mean template from the subject's pre-processed smoothed volume
-  # 2. Voxel-wise divide the data from 1. by the standard deviation template, which yields the voxel-wise z-map
-  # 3. Voxel-wise multiply the data from 3. by the gray matter mask (essentially to mask anything non-grey-matter, which is multiplied by 0)
-  #  
-  info "  zmap generation start"
-  local mean_template="${templates}/${age}${sex}smwp1_mean.nii.gz"
-  local std_template="${templates}/${age}${sex}smwp1_std.nii.gz"
-
-  # Path to normalized result
-  local zmap_normalized=$(echo "${processed_smoothed_nii}" | sed -e 's/\.nii$/_zmap.nii/I')
-
-  # Volume estimation using fslmaths instead of SPM12, which allows to use compressed templates
-  ${fslmaths} \
-    ${processed_smoothed_nii} \
-    -sub ${mean_template} \
-    -div ${std_template} \
-    -mul ${gm_mask} \
-    ${zmap_normalized}
-  if [[ ! -f "${zmap_normalized}" ]]; then error "Could not find ${zmap_normalized}."; fi
-  info "  zmap generation done"
+  # Define path to the age- and sex-specific zmap for the current subject
+  local zmap_normalized=${zmaps}/$(echo "${name_processed_smoothed_nii}" | sed -e "s/\.nii$/_${age}${sex}_zmap.nii/I")
 
   # Transform back to subject space
   info "  Inverse transformation start"
-  ${SPMROOT}/standalone/cat_standalone.sh \
+  "${SPMROOT}/standalone/cat_standalone.sh" \
     -b "${__dir}/tools/cat12/deformation.batch" \
-    -a1 "{'${dir_processed}/iy_${name_nii}'}" \
-    "${zmap_normalized}" || error "Transformation to subject space failed"
+    -a1 "{'${dir_processed_smoothed}/iy_${name_input_nii}'}" \
+    "${zmap_normalized}" 1> ${redirect} || error "Transformation to subject space failed"
 
-  # Export the variable zmap, which contains the path and filename to the generated zmap for the subject
-  export zmap="${dir_processed}/wsmwp1$(echo ${name_nii} | sed -e 's/\.nii$/_zmap.nii/I')"
-  if [[ ! -f "${zmap}" ]]; then error "Could not find ${zmap}."; fi
+  local zmap="${zmaps}"/wsmwp1$(echo ${name_input_nii} | sed -e "s/\.nii$/_${age}${sex}_zmap.nii/I")
+  if [[ ! -f "${zmap}" ]]; then error "Could not find ${zmap}."; return 1; fi
   info "  Inverse transformation done"
+
+  ### Generate and apply colour lookup tables to the zmap, then merge with the original scan
+  mkdir "${output_dir}-cmap-out"
+  if ! colourLUT "${input_nii}" "${zmap}" "${output_dir}-cmap-out" "${ref_dcm}"; then
+    error "colorLUT failed"
+    return 1
+  fi
+
+  ### Generate and apply colour lookup tables to the zmap, then merge with the original scan
+  mkdir "${output_dir}-qc-out"
+  local qc="${dir_processed_smoothed}/p0${name_input_nii}"
+  if ! qcOverlay "${input_nii}" "${qc}" "${output_dir}-qc-out" "${ref_dcm}"; then
+    error "qcOverlay failed"
+    return 1
+  fi
   
   info "estimateVolumechanges done"
+
+  return 0
 }
 
 # Export the function to be used when sourced, but do not allow the script to be called directly
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
   export -f estimateVolumechanges
 else
-  echo "estimageVolumechanges is an internal function and cannot be called directly."
+  echo "estimateVolumechanges is an internal function and cannot be called directly."
   exit 1
 fi

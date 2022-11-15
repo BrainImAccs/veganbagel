@@ -156,12 +156,14 @@ source "${__dir}/../../tools/bash/convertDCM2NII.bash"
 # shellcheck source=../brainstem/tools/bash/sendDCM.bash
 source "${__dir}/../../tools/bash/sendDCM.bash"
 
+# shellcheck source=bash/tools/catSegmentSmooth.bash
+source "${__dir}/tools/bash/catSegmentSmooth.bash"
+# shellcheck source=bash/tools/generateZmaps.bash
+source "${__dir}/tools/bash/generateZmaps.bash"
 # shellcheck source=bash/tools/estimateVolumechanges.bash
 source "${__dir}/tools/bash/estimateVolumechanges.bash"
-# shellcheck source=bash/tools/colourLUT.bash
-source "${__dir}/tools/bash/colourLUT.bash"
-# shellcheck source=bash/tools/qcOverlay.bash
-source "${__dir}/tools/bash/qcOverlay.bash"
+# shellcheck source=bash/tools/estimateBrainAGE.bash
+source "${__dir}/tools/bash/estimateBrainAGE.bash"
 
 ### Runtime
 ##############################################################################
@@ -237,8 +239,7 @@ if [[ ! -f "${template_volumes}/${age}${sex}smwp1_std.nii.gz" ]]; then
   error "There is no standard deviation template available for ${age}/${sex} in ${template_volumes}."
 fi
 
-info "  mean template: ${template_volumes}/${age}${sex}smwp1_mean.nii.gz"
-info "  standard deviation template: ${template_volumes}/${age}${sex}smwp1_std.nii.gz"
+info "Found matching template for ${age}/${sex} in ${template_volumes}."
 
 ### Create NII of original DCM files
 mkdir "${workdir}/nii-in"
@@ -246,44 +247,98 @@ mkdir "${workdir}/nii-in"
 # The third parameter to convertDCM2NII intentionally disables the creation of a gzip'ed NII
 convertDCM2NII "${workdir}/dcm-in/" "${workdir}/nii-in" "n" || error "convertDCM2NII failed"
 
-### Estimate regional volume
-# estimateVolumechanges export the variable zmap, which is the full path to the zmap
-estimateVolumechanges "${nii}" "${template_volumes}" "${age}" "${sex}" || error "estimateVolumechanges failed"
+# catSegmentSmooth exports the variable processed_smoothed_nii, which is the full path to the
+# smoothed gray matter segmentation after CAT12 processing
+processed_smoothed_nii=$(catSegmentSmooth "${nii}") || error "catSegmentSmooth failed"
 
-## ColourLUT
-
-### Generate and apply colour lookup tables to the zmap, then merge with the original scan
-mkdir "${workdir}/cmap-out"
-colourLUT "${nii}" "${zmap}" "${workdir}/cmap-out" "${ref_dcm}"
-
-### Generate and apply colour lookup tables to the zmap, then merge with the original scan
-mkdir "${workdir}/qc-out"
-qc=$(dirname "${zmap}")/p0$(basename "${nii}")
-qcOverlay "${nii}" "${qc}" "${workdir}/qc-out" "${ref_dcm}"
+# Calculate zmaps for all age- and sex-specific templates
+mkdir "${workdir}/zmaps"
+generateZmaps "${processed_smoothed_nii}" "${workdir}/zmaps" "${template_volumes}" "${age}" "${sex}" || error "generateZmaps failed"
 
 # Get the series number and description from the reference DICOM
 ref_series_no=$(getDCMTag "${ref_dcm}" "0020,0011" "n")
 ref_series_description=$(getDCMTag "${ref_dcm}" "0008,103e" "n")
 
-# Convert colour map and QC images to DICOM and export to PACS
-for type in cmap qc; do
-  echo
-  info "Processing ${type}"
+### Estimate regional volume
+(
+  GLOBAL_CONTEXT="estimateVolumechanges"
 
-  ### Convert merged images to DICOM
-  mkdir "${workdir}/${type}-dcm-out"
+  mkdir "${workdir}/estimateVolumechanges"
+  estimateVolumechanges \
+    "${nii}" \
+    "${processed_smoothed_nii}" \
+    "${workdir}/estimateVolumechanges" \
+    "${workdir}/zmaps" \
+    "${age}" \
+    "${sex}" \
+    "${ref_dcm}" || error "estimateVolumechanges failed"
 
-  # Define series number and description
-  if [[ "${type}" = "cmap" ]]; then
-    series_no=$(echo "${base_series_no} + ${ref_series_no}" | bc)
-    series_description="${ref_series_description} Volume Map"
-  elif [[ "${type}" = "qc" ]]; then
-    series_no=$(echo "${base_series_no} + ${ref_series_no}" | bc)
-    series_description="${ref_series_description} QC: Segmentation"
-  fi
+  # Convert colour map and QC images to DICOM and export to PACS
+  for type in cmap qc; do
+    info "Processing ${type}"
+
+    ### Convert merged images to DICOM
+    mkdir "${workdir}/estimateVolumechanges-${type}-dcm-out"
+
+    # Define series number and description
+    if [[ "${type}" = "cmap" ]]; then
+      series_no=$(echo "${base_series_no} + ${ref_series_no}" | bc)
+      series_description="${ref_series_description} Volume Map"
+    elif [[ "${type}" = "qc" ]]; then
+      series_no=$(echo "${base_series_no} + ${ref_series_no}" | bc)
+      series_description="${ref_series_description} QC: Segmentation"
+    fi
+
+    # Convert previously generated images to DICOM
+    convertIMG2DCM \
+      "${workdir}/estimateVolumechanges-${type}-out" \
+      "${workdir}/estimateVolumechanges-${type}-dcm-out" \
+      ${series_no} \
+      "${series_description}" \
+      "${ref_dcm}" || error "convertIMG2DCM failed"
+
+    ### Modify some more DICOM tags specific to veganbagel
+
+    # Set some version information on this tool
+    "${dcmodify}" \
+      --no-backup \
+      --insert "(0008,1090)"="BrainImAccs veganbagel - Research" \
+      --insert "(0018,1020)"="BrainImAccs veganbagel ${version_veganbagel}" \
+      "${workdir}/estimateVolumechanges-${type}-dcm-out"/*.dcm
+
+    info "  Modified DICOM tags specific to $(basename ${0})"
+
+    ### Send DCM to PACS
+    if [[ ! "${arg_n:?}" = "1" ]]; then
+      sendDCM "${workdir}/estimateVolumechanges-${type}-dcm-out/" "jpeg8" || error "sendDCM failed"
+    fi
+  done
+) &
+
+### Estimate BrainAGE
+(
+  GLOBAL_CONTEXT="estimateBrainAGE"
+
+  mkdir "${workdir}/estimateBrainAGE"
+  estimateBrainAGE \
+    "${workdir}/zmaps" \
+    "${gm_mask}" \
+    "${age}" \
+    "${workdir}/estimateBrainAGE" || error "estimateBrainAGE failed"
+
+  ### Convert statistical images to DICOM
+  mkdir "${workdir}/estimateBrainAGE-dcm-out"
+
+  series_no=$(echo "${base_series_no} + ${ref_series_no} + 10" | bc)
+  series_description="${ref_series_description} BrainAGE"
 
   # Convert previously generated images to DICOM
-  convertIMG2DCM "${workdir}/${type}-out" "${workdir}/${type}-dcm-out" ${series_no} "${series_description}" "${ref_dcm}" || error "convertIMG2DCM failed"
+  convertIMG2DCM \
+    "${workdir}/estimateBrainAGE" \
+    "${workdir}/estimateBrainAGE-dcm-out" \
+    ${series_no} \
+    "${series_description}" \
+    "${ref_dcm}" || error "convertIMG2DCM failed"
 
   ### Modify some more DICOM tags specific to veganbagel
 
@@ -292,15 +347,17 @@ for type in cmap qc; do
     --no-backup \
     --insert "(0008,1090)"="BrainImAccs veganbagel - Research" \
     --insert "(0018,1020)"="BrainImAccs veganbagel ${version_veganbagel}" \
-    "${workdir}/${type}-dcm-out"/*.dcm
+    "${workdir}/estimateBrainAGE-dcm-out"/*.dcm
 
   info "  Modified DICOM tags specific to $(basename ${0})"
 
   ### Send DCM to PACS
   if [[ ! "${arg_n:?}" = "1" ]]; then
-    sendDCM "${workdir}/${type}-dcm-out/" "jpeg8" || error "sendDCM failed"
+    sendDCM "${workdir}/estimateBrainAGE-dcm-out/" "jpeg8" || error "sendDCM failed"
   fi
-done
+) &
+
+wait
 
 ### Cleaning up
 # Copy reference DICOM file to ref_dcm.dcm and copy translation matrices to the source dir
