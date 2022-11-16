@@ -367,12 +367,13 @@ cp "${ref_dcm}" "${source_dir}/ref_dcm.dcm"
 # Remove the DICOM files from the source directory, but keep ref_dcm.dcm, translation matrices and log (if it exists)
 if [[ "${arg_c:?}" = "1" ]]; then
   if [ -e "${source_dir}/log" ]; then
-    info "Removing everything except reference DICOM and log from the source dir. Keeping CAT12 reports."
+    info "Removing everything except reference DICOM and log from the source dir. Keeping CAT12 and BrainAGE reports."
   else
-    info "Removing everything except reference DICOM from the source dir. Keeping CAT12 reports."
+    info "Removing everything except reference DICOM from the source dir. Keeping CAT12 and BrainAGE reports."
   fi
   find "${source_dir}" -type f -not -name 'ref_dcm.dcm' -not -name '*.mat' -not -name 'log' -delete
   cp -a "${workdir}/nii-in/report" "${source_dir}"
+  cp -a "${workdir}/estimateBrainAGE/brainage" "${source_dir}"
 fi
 
 # Keep or discard the workdir. The exit trap (see __b3bp_cleanup_before_exit) is used to discard the temporary workdir.
