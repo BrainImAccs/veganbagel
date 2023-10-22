@@ -112,8 +112,8 @@ def main():
         fnt = ImageFont.truetype(os.path.dirname(os.path.realpath(__file__)) + "/fonts/Beef'd.ttf", 5)
 
         # Derive the label from --zmax
-        legend_text_width, legend_text_height = d.textsize('+' + str(int(args.zmax)), font = fnt)
-        legend_text_width = legend_text_width
+        bbox = d.textbbox((0,0), '+' + str(int(args.zmax)), font = fnt)
+        legend_text_width, legend_text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
         # Add a pixel to allow for some spacing of legend and colour bar
         legend_text_height = legend_text_height + 1
 
@@ -147,12 +147,15 @@ def main():
 
         # Draw the text labels onto the legend image object, determined by --zmax and --zmin
         d = ImageDraw.Draw(L)
-        w, h = d.textsize('+' + str(int(args.zmax)), font = fnt)
+        bbox = d.textbbox((0,0), '+' + str(int(args.zmax)), font = fnt)
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
         d.text(((L.width - w)/2, 0), '+' + str(int(args.zmax)), font = fnt, fill = fnt_colour)
-        w, h = d.textsize('0', font = fnt)
+        bbox = d.textbbox((0,0), '0', font = fnt)
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
         # Nudge the 0 label a pixel to the top and right for visually more pleasing results
         d.text(((L.width - w)/2+1, (L.height - h)/2-1), '0', font = fnt, fill = fnt_colour)
-        w, h = d.textsize('-' + str(int(args.zmax)), font = fnt)
+        bbox = d.textbbox((0,0), '-' + str(int(args.zmax)), font = fnt)
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
         d.text(((L.width - w)/2, (L.height - legend_text_height)), '-' + str(int(args.zmax)), font = fnt, fill = fnt_colour)
 
         # For each slice of the anatomical image:
@@ -185,7 +188,8 @@ def main():
             # Add obligatory message "NOT FOR DIAGNOSTIC USE" to bottom center of the slice
             d = ImageDraw.Draw(A)
             msg = "Not for diagnostic use"
-            w, h = d.textsize(msg, font = fnt)
+            bbox = d.textbbox((0,0), msg, font = fnt)
+            w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
             d.text(((A.width - w)/2, (A.height - 10)), msg, font = fnt, fill = fnt_colour)
 
             # Convert to RGB (from RGBA) and write the resulting image as JPEG

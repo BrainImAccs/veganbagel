@@ -103,7 +103,8 @@ def main():
             # Add obligatory message "NOT FOR DIAGNOSTIC USE" to bottom center of the slice
             d = ImageDraw.Draw(A)
             msg = "Not for diagnostic use"
-            w, h = d.textsize(msg, font = fnt)
+            bbox = d.textbbox((0,0), msg, font = fnt)
+            w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
             d.text(((A.width - w)/2, (A.height - 10)), msg, font = fnt, fill = fnt_colour)
 
             # Convert to RGB (from RGBA) and write the resulting image as JPEG
