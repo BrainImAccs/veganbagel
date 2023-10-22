@@ -2,8 +2,6 @@
 
 Estimating regional deviations of brain volume from a patient’s normative age cohort is challenging and entails immense inter-reader variation. We propose an automated workflow for sex- and age-dependent estimation of brain volume changes relative to a normative population.
 
-veganbagel is meant to be used as a submodule of [BrainSTEM](https://github.com/BrainImAccs/BrainSTEM).
-
 Please note, this software is research-only and is not intended for clinical decisions/diagnosis.
 
 # Details
@@ -22,15 +20,17 @@ We recommend installing veganbagel using [Docker](https://www.docker.com). The c
 
 The results will be sent back to a DICOM node. For testing, you can for example use [Horos](https://horosproject.org) to send and receive DICOM files.
 
-veganbagel will be made available on the Docker Hub soon. Currently, please download the Dockerfile and then build the image:
+To build veganbagel, please:
 
 ```bash
+$ git clone --recurse-submodules https://github.com/BrainImAccs/veganbagel.git
+$ cd veganbagel
 $ docker build -t veganbagel ./
 ```
 
 # Running
 
-Environment variables may be used to configure aspects of BrainSTEM and veganbagel (please see (`setup.(brainstem|veganbagel).bash`). For example, to have the results sent back to IP `192.168.0.27`, port `11112` (AE Title `destination`), you may execute the container as follows:
+Environment variables may be used to configure aspects of BrainSTEM and veganbagel (please see (`setup.(brainstem|veganbagel).bash`) (see also [BrainSTEM](https://github.com/BrainImAccs/BrainSTEM)). For example, to have the results sent back to IP `192.168.0.27`, port `11112` (AE Title `destination`), you may execute the container as follows:
 
 ```bash
 $ docker run -it \
@@ -42,23 +42,6 @@ $ docker run -it \
 ```
 
 The DICOM node in the container listens on port `10105/tcp` by default.
-
-# Development
-
-If you would like to pull either veganbagel or BrainSTEM from a different GitHub account, or would like to us a different branch, you may use `--build-arg` when building the cointainer:
-
-```bash
-$ docker build \
-  -t veganbagel \
-  --build-arg BIA_GITHUB_USER_BRAINSTEM=user \
-  --build-arg BIA_BRANCH_BRAINSTEM=BrainSTEM-branch \
-  --build-arg BIA_GITHUB_USER_MODULE=user \
-  --build-arg BIA_BRANCH_MODULE=veganbagel-branch \
-  --build-arg BIA_TSTAMP=$(date "+%s") \
-  ./
-```
-
-By providing a timestamp to `BIA_TSTAMP` Docker will always pull the latest git version of veganbagel and BrainSTEM.
 
 # Acknowledgements
 

@@ -24,7 +24,7 @@ function colourLUT {
 
   # Source the getDCMTag function, if necessary
   if [[ ! "$(type -t getDCMTag)" = "function" ]]; then
-    source "${__dir}/../../tools/bash/getDCMTag.bash"
+    source "${__dir}/BrainSTEM/tools/bash/getDCMTag.bash"
   fi
 
   # Use the anat_and_zmap_lut Python script for colour mapping, merging and export JPEG files

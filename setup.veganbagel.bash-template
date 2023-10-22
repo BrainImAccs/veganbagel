@@ -12,7 +12,7 @@
 
 # Source some global setup options
 #
-. "${__dir}/../../setup.brainstem.bash"
+. "${__dir}/BrainSTEM/setup.brainstem.bash"
 
 # Add this number to the original series's number (derived from DICOM tag 0020,0011)
 #

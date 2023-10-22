@@ -58,7 +58,7 @@ read -r -d '' __helptext <<-'EOF' || true # exits non-zero when EOF encountered
 EOF
 
 # shellcheck source=b3bp.bash
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../tools/b3bp.bash"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/BrainSTEM/tools/b3bp.bash"
 
 # Set version
 version_veganbagel=$(cd "${__dir}" && git describe --always)
@@ -148,13 +148,13 @@ fi
 ##############################################################################
 
 # shellcheck source=../brainstem/tools/bash/getDCMTag.bash
-source "${__dir}/../../tools/bash/getDCMTag.bash"
+source "${__dir}/BrainSTEM/tools/bash/getDCMTag.bash"
 # shellcheck source=../brainstem/tools/convertIMG2DCM.bash
-source "${__dir}/../../tools/bash/convertIMG2DCM.bash"
+source "${__dir}/BrainSTEM/tools/bash/convertIMG2DCM.bash"
 # shellcheck source=../brainstem/tools/bash/convertDCM2NII.bash
-source "${__dir}/../../tools/bash/convertDCM2NII.bash"
+source "${__dir}/BrainSTEM/tools/bash/convertDCM2NII.bash"
 # shellcheck source=../brainstem/tools/bash/sendDCM.bash
-source "${__dir}/../../tools/bash/sendDCM.bash"
+source "${__dir}/BrainSTEM/tools/bash/sendDCM.bash"
 
 # shellcheck source=bash/tools/estimateVolumechanges.bash
 source "${__dir}/tools/bash/estimateVolumechanges.bash"
