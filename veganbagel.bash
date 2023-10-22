@@ -41,6 +41,8 @@
 # shellcheck disable=SC2034
 read -r -d '' __usage <<-'EOF' || true # exits non-zero when EOF encountered
   -i --input [arg]    Directory containing the DICOM input files. Required.
+  -a --age [arg]      Optional and not recommended. Overrides the subject's age as extracted from the DICOMs.
+  -s --sex [arg]      Optional and not recommended. Overrides the subject's sex as extracted from the DICOMs.
   -k --keep-workdir   After running, copy the temporary work directory into the input directory.
   -c --cleanup        After running, empty the source directory (reference DICOM, translation matrices and logs are kept)
   -t --total-cleanup  After running, delete the source directory
@@ -225,8 +227,17 @@ fi
 
 # Get and age and sex of the subject
 age=$(getDCMTag "${ref_dcm}" "0010,1010" | sed -e 's/0\+//' -e 's/Y$//')
-sex=$(getDCMTag "${ref_dcm}" "0010,0040")
+if [[ "${arg_a:-}" ]]; then
+  warning "Overriding the age found in the DICOM (${age}) and using the supplied ${arg_a}."
+  age=${arg_a}
+fi
 echo $age > "${workdir}/age"
+
+sex=$(getDCMTag "${ref_dcm}" "0010,0040")
+if [[ "${arg_s:-}" ]]; then
+  warning "Overriding the sex found in the DICOM (${sex}) and using the supplied ${arg_s}."
+  sex=${arg_s}
+fi
 echo $sex > "${workdir}/sex"
 
 # Check if the appropriate mean and standard deviation (std) templates are available
