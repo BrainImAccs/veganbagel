@@ -228,15 +228,23 @@ fi
 # Get and age and sex of the subject
 age=$(getDCMTag "${ref_dcm}" "0010,1010" | sed -e 's/0\+//' -e 's/Y$//')
 if [[ "${arg_a:-}" ]]; then
-  warning "Overriding the age found in the DICOM (${age}) and using the supplied ${arg_a}."
-  age=${arg_a}
+  if [[ ! "${arg_a}" =~ ^[0-9]+$ ]]; then
+    error "Subject's age has to be an integer."
+  else
+    warning "Overriding the age found in the DICOM (${age}) and using the supplied ${arg_a}."
+    age=${arg_a}
+  fi
 fi
 echo $age > "${workdir}/age"
 
 sex=$(getDCMTag "${ref_dcm}" "0010,0040")
 if [[ "${arg_s:-}" ]]; then
-  warning "Overriding the sex found in the DICOM (${sex}) and using the supplied ${arg_s}."
-  sex=${arg_s}
+  if [[ ! "${arg_s}" =~ ^(M|F)$ ]]; then
+    error "Subject's sex has to be either F or M."
+  else
+    warning "Overriding the sex found in the DICOM (${sex}) and using the supplied ${arg_s}."
+    sex=${arg_s}
+  fi
 fi
 echo $sex > "${workdir}/sex"
 
