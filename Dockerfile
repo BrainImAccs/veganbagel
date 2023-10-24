@@ -191,18 +191,12 @@ ENV FSLOUTPUTTYPE NIFTI
 ENV FSLMULTIFILEQUIT TRUE
 ENV PATH ${FSLDIR}/bin:$PATH
 
-ARG BIA_MODULE
-ENV BIA_MODULE=${BIA_MODULE}
-ARG BIA_TSTAMP=${BIA_TSTAMP:-unknown}
-
 COPY --from=micromamba "$MAMBA_EXE" "$MAMBA_EXE"
 COPY --from=micromamba /usr/local/bin/_activate_current_env.sh /usr/local/bin/_activate_current_env.sh
 COPY --from=micromamba /usr/local/bin/_dockerfile_shell.sh /usr/local/bin/_dockerfile_shell.sh
 COPY --from=micromamba /usr/local/bin/_entrypoint.sh /usr/local/bin/_entrypoint.sh
 COPY --from=micromamba /usr/local/bin/_dockerfile_initialize_user_accounts.sh /usr/local/bin/_dockerfile_initialize_user_accounts.sh
 COPY --from=micromamba /usr/local/bin/_dockerfile_setup_root_prefix.sh /usr/local/bin/_dockerfile_setup_root_prefix.sh
-
-COPY . /opt/bia
 
 ENV FSL_CONDA_CHANNEL="https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public"
 
@@ -211,13 +205,24 @@ RUN set -eux \
   && /usr/local/bin/_dockerfile_setup_root_prefix.sh \
   && micromamba install --yes --name base --channel $FSL_CONDA_CHANNEL \
     fsl-avwutils=2209.2 \
+    fsl-miscmaths=2203.2 \
     nibabel \
     pydicom \
     matplotlib \
     pillow \
     colorcet \
     --channel conda-forge \
-  && micromamba clean --all --yes \
+  && micromamba clean --all --yes
+
+USER bia
+
+ARG BIA_MODULE
+ENV BIA_MODULE=${BIA_MODULE}
+ARG BIA_TSTAMP=${BIA_TSTAMP:-unknown}
+
+COPY --chown=$MAMBA_USER_ID:$MAMBA_USER_GID . /opt/bia
+
+RUN set -eux \
   && cat /opt/bia/setup.${BIA_MODULE}.bash-template | \
       sed \
         -e "s%^SPMROOT=/path/to/cat12-standalone%SPMROOT=/opt/cat${CAT_VERSION_MAJOR}%" \
@@ -231,9 +236,9 @@ RUN set -eux \
       /opt/bia/BrainSTEM/tools/startJob.bash-template \
       /opt/bia/BrainSTEM/tools/startJob.bash \
   && chmod 755 /opt/bia/BrainSTEM/tools/startJob.bash \
-  && chown bia:bia /opt/bia -R
-
-USER bia
+  && git config --global --add safe.directory /opt/bia \
+  && (cd /opt/bia && git describe --always) >> /opt/bia/version \
+  && rm -rf /opt/bia/.git
 
 EXPOSE 10105/tcp
 

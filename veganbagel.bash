@@ -63,7 +63,11 @@ EOF
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/BrainSTEM/tools/b3bp.bash"
 
 # Set version
-version_veganbagel=$(cd "${__dir}" && git describe --always)
+if [[ -e "${__dir}/version" ]]; then
+  version_veganbagel=$(cat "${__dir}/version")
+else
+  version_veganbagel=$(cd "${__dir}" && git describe --always)
+fi
 
 # Set UID prefix
 prefixUID=12
