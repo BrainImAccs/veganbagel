@@ -47,6 +47,10 @@ def arg_parser():
                         help='Window center for anatomical images (optional, otherwise center of min/max will be used. Must be defined with --anat-window-width.')
     parser.add_argument('--anat-window-width', dest='wwidth', type=int,
                         help='Window width for anatomical images (optional, otherwise min/max will be used. Must be defined with --anat-window-center.')
+    parser.add_argument('--age', dest='age', type=float,
+                        help='Patient or subject age (years, e.g. 65.289)')
+    parser.add_argument('--predicted-brainage', dest='brainage', type=float,
+                        help='Patient or subject predicted brain age (years, e.g. 66.478)')
     parser.add_argument('out_dir', type=str, 
                         help='path to output the corresponding JPEG image slices')
     return parser
@@ -188,6 +192,14 @@ def main():
             # Add obligatory message "NOT FOR DIAGNOSTIC USE" to bottom center of the slice
             d = ImageDraw.Draw(A)
             msg = "Not for diagnostic use"
+            bbox = d.textbbox((0,0), msg, font = fnt)
+            w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+            d.text(((A.width - w)/2, (A.height - 20)), msg, font = fnt, fill = fnt_colour)
+
+            # Add BrainAGE information
+            d = ImageDraw.Draw(A)
+            gap = args.brainage - args.age
+            msg = f"Prediction: {args.brainage:.2f} - Age: {args.age:.2f} = BrainAGE of {gap:.2f}"
             bbox = d.textbbox((0,0), msg, font = fnt)
             w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
             d.text(((A.width - w)/2, (A.height - 10)), msg, font = fnt, fill = fnt_colour)

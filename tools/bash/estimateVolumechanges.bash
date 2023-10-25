@@ -25,8 +25,8 @@ function estimateVolumechanges {
     -b "${__dir}/tools/cat12/segment.batch" \
     "${input_nii}" || error "CAT12 segmentation failed"
 
-  # Path to the result of CAT12 standalone segmentation
-  local processed_nii="${dir_processed}/mwp1${name_nii}"
+  # Export the variable processed_nii, which contains the path to the result of the CAT12 standalone segmentation
+  export processed_nii="${dir_processed}/mwp1${name_nii}"
   if [[ ! -f "${processed_nii}" ]]; then error "Could not find ${processed_nii}."; fi
   info "  Segmentation done"
 

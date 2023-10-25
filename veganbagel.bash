@@ -168,6 +168,8 @@ source "${__dir}/tools/bash/estimateVolumechanges.bash"
 source "${__dir}/tools/bash/colourLUT.bash"
 # shellcheck source=bash/tools/qcOverlay.bash
 source "${__dir}/tools/bash/qcOverlay.bash"
+# shellcheck source=bash/tools/calculateBrainAGE.bash
+source "${__dir}/tools/bash/calculateBrainAGE.bash"
 
 ### Runtime
 ##############################################################################
@@ -230,16 +232,27 @@ if [[ ! "$contrastApplied" = "NOT_FOUND_IN_DICOM_HEADER" ]]; then
 fi
 
 # Get and age and sex of the subject
+patientBirthDate=$(getDCMTag "${ref_dcm}" "PatientBirthDate")
+studyDate=$(getDCMTag "${ref_dcm}" "StudyDate")
+
+if [[ "${patientBirthDate}" =~ ^[0-9]{8}$ && "${studyDate}" =~ ^[0-9]{8}$ ]]; then
+  age_days=$(dateutils.ddiff --input-format="%Y%m%d" --format="%d" "${patientBirthDate}" "${studyDate}")
+  age_years_dec=$(echo "${age_days} / 365.25" | bc -l)
+fi
+
 age=$(getDCMTag "${ref_dcm}" "0010,1010" | sed -e 's/0\+//' -e 's/Y$//')
 if [[ "${arg_a:-}" ]]; then
-  if [[ ! "${arg_a}" =~ ^[0-9]+$ ]]; then
+  if [[ ! "${arg_a}" =~ ^[0-9.]+$ ]]; then
     error "Subject's age has to be an integer."
   else
     warning "Overriding the age found in the DICOM (${age}) and using the supplied ${arg_a}."
-    age=${arg_a}
+    age=$(echo ${arg_a} | cut -d'.' -f2)
+    age_years_dec=${arg_a}
   fi
 fi
-echo $age > "${workdir}/age"
+echo ${age} > "${workdir}/age"
+echo ${age_days} > "${workdir}/age_days"
+echo ${age_years_dec} > "${workdir}/age_years_dec"
 
 sex=$(getDCMTag "${ref_dcm}" "0010,0040")
 if [[ "${arg_s:-}" ]]; then
@@ -270,14 +283,23 @@ mkdir "${workdir}/nii-in"
 convertDCM2NII "${workdir}/dcm-in/" "${workdir}/nii-in" "n" || error "convertDCM2NII failed"
 
 ### Estimate regional volume
-# estimateVolumechanges export the variable zmap, which is the full path to the zmap
+# estimateVolumechanges exports
+#  * the variable processed_nii, which is the full path to the result of the standalone CAT12 segmentation
+#  * the variable zmap, which is the full path to the zmap
 estimateVolumechanges "${nii}" "${template_volumes}" "${age}" "${sex}" || error "estimateVolumechanges failed"
 
 ## ColourLUT
 
+### Calculate the Brain Age Gap Estimation (BrainAGE)
+# calculateBrainAGE exports
+#  * the variable brainage_estimation, which is the output of the model, i.e. the estimated age of the brain
+#  * the variable BrainAGE, which is the Brain Age Gap Estimation (brainage_estimation - age_years_dec)
+mkdir "${workdir}/brainage_estimation"
+calculateBrainAGE "${processed_nii}" "${workdir}/brainage_estimation" "${age_years_dec}" || error "calculateBrainAGE failed"
+
 ### Generate and apply colour lookup tables to the zmap, then merge with the original scan
 mkdir "${workdir}/cmap-out"
-colourLUT "${nii}" "${zmap}" "${workdir}/cmap-out" "${ref_dcm}"
+colourLUT "${nii}" "${zmap}" "${workdir}/cmap-out" "${ref_dcm}" "${age_years_dec}" "${brainage_estimation}"
 
 ### Generate and apply colour lookup tables to the zmap, then merge with the original scan
 mkdir "${workdir}/qc-out"

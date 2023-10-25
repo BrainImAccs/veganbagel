@@ -19,6 +19,10 @@ function colourLUT {
   local output_dir="${3}"
   # Reference DICOM (for window center/width)
   local ref_dcm="${4}"
+  # Patient's or subject's age
+  local age="${5}"
+  # Patient's or subject's predicted brain age
+  local brainage="${6}"
 
   info "colorLUT start"
 
@@ -34,6 +38,8 @@ function colourLUT {
     --hot ${colours_positive_lut} \
     --zmin ${z_min} \
     --zmax ${z_max} \
+    --age ${age} \
+    --predicted-brainage ${brainage} \
     "${input_nii}" \
     "${input_zmap}" \
     "${output_dir}" || error "anat_and_zmap_lut failed"

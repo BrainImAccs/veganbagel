@@ -1,3 +1,6 @@
 [submodule "BrainSTEM"]
 	path = BrainSTEM
 	url = https://github.com/BrainImAccs/BrainSTEM.git
+[submodule "external/brainage_estimation"]
+	path = external/brainage_estimation
+	url = https://github.com/BrainImAccs/brainage_estimation.git

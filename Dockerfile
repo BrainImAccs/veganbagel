@@ -73,6 +73,7 @@ RUN set -eux \
       libjpeg-dev \
       imagemagick \
       fonts-texgyre \
+      dateutils \
   && apt-get clean \
   && rm -rf /tmp/hsperfdata* /var/*/apt/*/partial /var/lib/apt/lists/* /var/log/apt/term* \
   && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
@@ -198,6 +199,8 @@ COPY --from=micromamba /usr/local/bin/_entrypoint.sh /usr/local/bin/_entrypoint.
 COPY --from=micromamba /usr/local/bin/_dockerfile_initialize_user_accounts.sh /usr/local/bin/_dockerfile_initialize_user_accounts.sh
 COPY --from=micromamba /usr/local/bin/_dockerfile_setup_root_prefix.sh /usr/local/bin/_dockerfile_setup_root_prefix.sh
 
+COPY --chown=$MAMBA_USER_ID:$MAMBA_USER_GID . /opt/bia
+
 ENV FSL_CONDA_CHANNEL="https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public"
 
 RUN set -eux \
@@ -212,6 +215,8 @@ RUN set -eux \
     pillow \
     colorcet \
     --channel conda-forge \
+  && micromamba clean --all --yes \
+  && micromamba env create --yes --file /opt/bia/external/brainage_estimation/requirements.yml \
   && micromamba clean --all --yes
 
 USER bia
@@ -219,8 +224,6 @@ USER bia
 ARG BIA_MODULE
 ENV BIA_MODULE=${BIA_MODULE}
 ARG BIA_TSTAMP=${BIA_TSTAMP:-unknown}
-
-COPY --chown=$MAMBA_USER_ID:$MAMBA_USER_GID . /opt/bia
 
 RUN set -eux \
   && cat /opt/bia/setup.${BIA_MODULE}.bash-template | \
