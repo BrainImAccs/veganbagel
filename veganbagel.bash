@@ -246,7 +246,7 @@ if [[ "${arg_a:-}" ]]; then
     error "Subject's age has to be an integer."
   else
     warning "Overriding the age found in the DICOM (${age}) and using the supplied ${arg_a}."
-    age=$(echo ${arg_a} | cut -d'.' -f2)
+    age=$(echo ${arg_a} | cut -d'.' -f1)
     age_years_dec=${arg_a}
   fi
 fi
