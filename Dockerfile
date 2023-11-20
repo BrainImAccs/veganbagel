@@ -67,11 +67,10 @@ RUN set -eux \
       locales \
       unzip \
       git \
-      dcmtk \
-      nifti2dicom \
+      dcmtk=3.6.5-1 \
+      nifti2dicom=0.4.11-3 \
       parallel \
       libjpeg-dev \
-      imagemagick \
       fonts-texgyre \
       dateutils \
   && apt-get clean \
@@ -209,11 +208,11 @@ RUN set -eux \
   && micromamba install --yes --name base --channel $FSL_CONDA_CHANNEL \
     fsl-avwutils=2209.2 \
     fsl-miscmaths=2203.2 \
-    nibabel \
-    pydicom \
-    matplotlib \
-    pillow \
-    colorcet \
+    nibabel=5.1.0 \
+    pydicom=2.4.3 \
+    matplotlib=3.8.0 \
+    pillow=10.0.1 \
+    colorcet=3.0.1 \
     --channel conda-forge \
   && micromamba clean --all --yes \
   && micromamba env create --yes --file /opt/bia/external/brainage_estimation/requirements.yml \
