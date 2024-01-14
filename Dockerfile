@@ -198,8 +198,6 @@ COPY --from=micromamba /usr/local/bin/_entrypoint.sh /usr/local/bin/_entrypoint.
 COPY --from=micromamba /usr/local/bin/_dockerfile_initialize_user_accounts.sh /usr/local/bin/_dockerfile_initialize_user_accounts.sh
 COPY --from=micromamba /usr/local/bin/_dockerfile_setup_root_prefix.sh /usr/local/bin/_dockerfile_setup_root_prefix.sh
 
-COPY --chown=$MAMBA_USER_ID:$MAMBA_USER_GID . /opt/bia
-
 ENV FSL_CONDA_CHANNEL="https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public"
 
 RUN set -eux \
@@ -214,7 +212,11 @@ RUN set -eux \
     pillow=10.0.1 \
     colorcet=3.0.1 \
     --channel conda-forge \
-  && micromamba clean --all --yes \
+  && micromamba clean --all --yes
+
+COPY --chown=$MAMBA_USER_ID:$MAMBA_USER_GID . /opt/bia
+
+RUN set -eux \
   && micromamba env create --yes --file /opt/bia/external/brainage_estimation/requirements.yml \
   && micromamba clean --all --yes
 
