@@ -11,8 +11,6 @@ function qcOverlay {
   local input_qc="${2}"
   # Desired output directory
   local output_dir="${3}"
-  # Reference DICOM (for window center/width)
-  local ref_dcm="${4}"
 
   info "qcOverlay start"
 

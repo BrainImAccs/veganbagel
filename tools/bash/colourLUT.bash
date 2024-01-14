@@ -17,12 +17,10 @@ function colourLUT {
   local input_zmap="${2}"
   # Desired output directory
   local output_dir="${3}"
-  # Reference DICOM (for window center/width)
-  local ref_dcm="${4}"
   # Patient's or subject's age
-  local age="${5}"
+  local age="${4}"
   # Patient's or subject's predicted brain age
-  local brainage="${6}"
+  local brainage="${5}"
 
   info "colorLUT start"
 
